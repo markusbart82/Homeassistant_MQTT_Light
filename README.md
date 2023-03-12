@@ -26,6 +26,13 @@ The lamp supports autodiscovery and identifies as "ESP-dimmer-NUMBER", where the
 * transitions
 * flashing
 
+# Stand-alone mode
+As a fallback, the lamp supports stand-alone operation:
+* On powerup, the lamp turns on with neutral white
+* On falling/rising edge (configurable) of the two sense inputs, the lamp turns on with neutral white for a (configurable) amount of time
+* On powerup, the wifi switch is read. If it is pulled low, WIFI remains disabled
+* The wifi and sense inputs have pullups activated, so they can remain unconnected for standard (wifi enabled, Homeassistant connected) mode
+
 # Hardware
 The lamp uses the PCA9685 PWM driver IC (16 channels, 12 bits, up to 1.5kHz, I2C) to interface with the LEDs. Currently, channels 1..5 are assigned R,G,B,WW,CW.
 
