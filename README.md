@@ -1,5 +1,5 @@
 # Homeassistant MQTT Light
-Homeassistant compatible MQTT Light implementation for RGB+CCT LEDs.
+Homeassistant compatible MQTT Light implementation for RGB+CCT LEDs. Uses ESP8266 and PCA9685.
 
 The idea started because I wanted "white with a color tint" smart lights. But apparently, this is not supported by smart home tech yet. It's either RGB, or white, never a mix of these. So this lamp here identifies as RGB, but mixes white with it.
 
@@ -28,3 +28,6 @@ The lamp supports autodiscovery and identifies as "ESP-dimmer-NUMBER", where the
 
 # Hardware
 The lamp uses the PCA9685 PWM driver IC (16 channels, 12 bits, up to 1.5kHz, I2C) to interface with the LEDs. Currently, channels 1..5 are assigned R,G,B,WW,CW.
+
+## Ledcontroller_3x
+This PCB includes the ESP8266, PCA9685 and BLM3400 mosfets, for controlling 24V LED strips with a common +24V.
