@@ -11,7 +11,20 @@ To mix colors, the lamp takes the minimum of the three R,G,B colors, and replace
 
 # White mixing
 In addition, this lamp supports tuneable white, so mixing warm white and cold white with everything else. In order to make Homeassistant use this, the lamp remembers the last color temperature setting and uses this.
-* RGB(255,255,255),TEMP(255) --> RGBWW(0,0,0,0,255)
-* RGB(255,255,255),TEMP(0) --> RGBWW(0,0,0,255,0)
-* RGB(255,128,0),TEMP(255) --> RGBWW(255,128,0,0,0)
-* RGB(255,192,128),TEMP(64) --> RGBWW(128,64,0,192,64)
+* RGB(255,255,255),TEMP(255) --> RGBWC(0,0,0,0,255)
+* RGB(255,255,255),TEMP(0) --> RGBWC(0,0,0,255,0)
+* RGB(255,128,0),TEMP(255) --> RGBWC(255,128,0,0,0)
+* RGB(255,192,128),TEMP(64) --> RGBWC(128,64,0,192,64)
+
+# Homeassistant integration
+The lamp supports autodiscovery and identifies as "ESP-dimmer-NUMBER", where the number is derived from the MAC address. Supported features:
+* JSON schema
+* ON/OFF
+* brightness
+* color temperature
+* RGB
+* transitions
+* flashing
+
+# Hardware
+The lamp uses the PCA9685 PWM driver IC (16 channels, 12 bits, up to 1.5kHz, I2C) to interface with the LEDs. Currently, channels 1..5 are assigned R,G,B,WW,CW.
