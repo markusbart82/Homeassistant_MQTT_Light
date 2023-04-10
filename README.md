@@ -26,6 +26,11 @@ The lamp supports autodiscovery and identifies as "ESP-dimmer-NUMBER", where the
 * transitions
 * flashing
 
+# Effects
+The lamp supports the following effects:
+* Colorwheel - slowly changes through the RGB spectrum
+* Undulation - slowly undulates randomly near the previously selected color
+
 # Stand-alone mode
 As a fallback, the lamp supports stand-alone operation:
 * On powerup, the lamp turns on with neutral white

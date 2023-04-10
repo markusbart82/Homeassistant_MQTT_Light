@@ -76,9 +76,14 @@ volatile bool flashBool = false; // this is toggled, keeps state of  lights whil
 volatile int flashProgress = 0; // must be set to value >0 to start flashing, decrements by 1 every 100ms
 volatile int flashTimer = millis(); // variable used for timing the color flashing action
 
-// stand-alone mode related values
-volatile int senseTimeout = 0; // if this is >0, the lamp is on, if it reaches 0, the lamp turns off
-volatile int senseTimer = millis(); // variable used for timing the stand-alone mode
+// effects related values
+enum effect_t {
+  none = 0,
+  colorwheel = 1,
+  undulation = 2
+};
+volatile effect_t activeEffect = none;
+volatile int effectCounter = 0;
 
 // conversion table for mapping 8bit PWM inputs to 12bit PWM outputs for smooth, linear-looking PWM
 // linear
@@ -102,12 +107,6 @@ void setup_wifi() {
 }
 
 
-// this ISR is called whenever one of the sense inputs triggers
-void ICACHE_RAM_ATTR isrSense(){
-  senseTimeout = SENSE_TIMEOUT;
-}
-
-
 void setup()
 {
   // configure pins
@@ -123,6 +122,10 @@ void setup()
   delay(100);
   Serial.println("Setup");
 
+  // random number generator
+  Serial.println("...RNG");
+  randomSeed(analogRead(A0));
+  
   // setup PWM
   Serial.println("...PWM");
   pwm0.begin();
@@ -171,7 +174,7 @@ void setup()
 
 // 128 Bits message length:                                                                                                                        ---->|
   strcpy(configMessage0, "{\"name\":\"esp_dimmer\",\"schema\":\"json\",\"brightness\":true,\"clrm\":true,\"min_mireds\":142,\"max_mireds\":435");
-  strcpy(configMessage1, ",\"sup_clrm\":[\"color_temp\",\"rgb\"]");
+  strcpy(configMessage1, ",\"sup_clrm\":[\"color_temp\",\"rgb\"],\"effect\":true,\"fx_list\":[\"none\",\"colorwheel\",\"undulation\"]");
   strcpy(configMessage2, ",\"dev\":{\"identifiers\":[\"");
   strcat(configMessage2, clientName);
   strcpy(configMessage3, "\"],\"name\":\"esp_dimmer\"},\"stat_t\":\"");
@@ -234,6 +237,7 @@ void loop()
   client.loop();
   dimLoop();
   flashLoop();
+  effectsLoop();
 }
 
 
@@ -254,6 +258,11 @@ void sendCurrentState(){
     message["color"]["r"] = valueRin;
     message["color"]["g"] = valueGin;
     message["color"]["b"] = valueBin;
+  }
+  if(activeEffect == colorwheel){
+    message["effect"] = "colorwheel";
+  }else if(activeEffect == undulation){
+    message["effect"] = "undulation";
   }
   char output[128];
   serializeJson(message, output);
@@ -299,12 +308,27 @@ void parseHA(byte* payload, unsigned int length){
     JsonVariant flash = message["flash"];
     if(!flash.isNull()){
       flashProgress = 10 * flash.as<int>();
+      activeEffect = none;
     }
     
     // transition [seconds]: time the lamp should take to transition to target color
     JsonVariant transition = message["transition"];
     if(!transition.isNull()){
       dimValue = 1000 * transition.as<int>();
+      activeEffect = none;
+    }
+    
+    // effect
+    JsonVariant effect = message["effect"];
+    if(!effect.isNull()){
+      // explicit comparison instead of implicit cast on assignment to avoid illegal values
+      if(effect == "none"){
+        activeEffect = none;
+      }else if(effect == "colorwheel"){
+        activeEffect = colorwheel;
+      }else if(effect == "undulation"){
+        activeEffect = undulation;
+      }
     }
     
     // brightness [0..255]
@@ -313,19 +337,32 @@ void parseHA(byte* payload, unsigned int length){
       valueRin = brightness.as<int>();
       valueGin = brightness.as<int>();
       valueBin = brightness.as<int>();
+      activeEffect = none;
     }
     
     // colors [0..255]
     JsonVariant red = message["color"]["r"];
-    if(!red.isNull()){valueRin = red;}
+    if(!red.isNull()){
+      valueRin = red;
+      activeEffect = none;
+    }
     JsonVariant green = message["color"]["g"];
-    if(!green.isNull()){valueGin = green;}
+    if(!green.isNull()){
+      valueGin = green;
+      activeEffect = none;
+    }
     JsonVariant blue = message["color"]["b"];
-    if(!blue.isNull()){valueBin = blue;}
+    if(!blue.isNull()){
+      valueBin = blue;
+      activeEffect = none;
+    }
     
     // color temperature [mireds]
     JsonVariant colorTemp = message["color_temp"];
-    if(!colorTemp.isNull()){valueCTin = colorTemp;}
+    if(!colorTemp.isNull()){
+      valueCTin = colorTemp;
+      activeEffect = none;
+    }
 
     // state [ON|OFF]
     JsonVariant state = message["state"];
@@ -335,10 +372,12 @@ void parseHA(byte* payload, unsigned int length){
         valueRin=255;
         valueGin=255;
         valueBin=255;
+        activeEffect = none;
       }else if(strcmp(state,"OFF")==0){
         valueRin=0;
         valueGin=0;
         valueBin=0;
+        activeEffect = none;
       }
     }
 #if(NODE_DEBUG == true)
@@ -391,7 +430,9 @@ void updateLEDs(){
   pwmEndValues[13] = pwmTable[valueWWfull * whiteContent / 255];
   pwmEndValues[14] = pwmTable[valueCWfull * whiteContent / 255];
   // start default transition to new color
-  dimProgress = dimValue;
+  if(activeEffect == none){
+    dimProgress = dimValue;
+  }
 
 #if(NODE_DEBUG == true)
   Serial.print("White values: ");
@@ -414,6 +455,92 @@ void updateLEDs(){
   Serial.print(",");
   Serial.println(pwmEndValues[4]);
 #endif
+}
+
+
+int randomNextUndulationTarget(int baseValue){
+  int minValue = (baseValue * 50) / 100;
+  int maxValue = (baseValue * 150) / 100;
+  if(maxValue > 4095){maxValue = 4095;}
+  return random(minValue, maxValue);
+}
+
+
+void effectsLoop(){
+  // effects use dimming, set the next target state when a dim is complete
+  if(activeEffect != none && dimProgress == 0){
+
+    effectCounter++;
+    if(activeEffect == colorwheel){
+      if(effectCounter >= 6){effectCounter = 0;}
+      switch(effectCounter){
+        case 0:
+          valueRin = 255;
+          valueGin = 0;
+          valueBin = 0;
+          break;
+        case 1:
+          valueRin = 255;
+          valueGin = 255;
+          valueBin = 0;
+          break;
+        case 2:
+          valueRin = 0;
+          valueGin = 255;
+          valueBin = 0;
+          break;
+        case 3:
+          valueRin = 0;
+          valueGin = 255;
+          valueBin = 255;
+          break;
+        case 4:
+          valueRin = 0;
+          valueGin = 0;
+          valueBin = 255;
+          break;
+        case 5:
+          valueRin = 255;
+          valueGin = 0;
+          valueBin = 255;
+          break;
+      }
+      dimValue = 5000;
+      dimProgress = dimValue;
+      updateLEDs();
+    }else if(activeEffect == undulation){
+      // reset dim target to input values
+      updateLEDs();
+      // modify target values
+      pwmEndValues[0] = randomNextUndulationTarget(pwmEndValues[0]);
+      pwmEndValues[1] = randomNextUndulationTarget(pwmEndValues[1]);
+      pwmEndValues[2] = randomNextUndulationTarget(pwmEndValues[2]);
+      pwmEndValues[3] = randomNextUndulationTarget(pwmEndValues[3]);
+      pwmEndValues[4] = randomNextUndulationTarget(pwmEndValues[4]);
+      pwmEndValues[5] = randomNextUndulationTarget(pwmEndValues[5]);
+      pwmEndValues[6] = randomNextUndulationTarget(pwmEndValues[6]);
+      pwmEndValues[7] = randomNextUndulationTarget(pwmEndValues[7]);
+      pwmEndValues[8] = randomNextUndulationTarget(pwmEndValues[8]);
+      pwmEndValues[9] = randomNextUndulationTarget(pwmEndValues[9]);
+      pwmEndValues[10] = randomNextUndulationTarget(pwmEndValues[10]);
+      pwmEndValues[11] = randomNextUndulationTarget(pwmEndValues[11]);
+      pwmEndValues[12] = randomNextUndulationTarget(pwmEndValues[12]);
+      pwmEndValues[13] = randomNextUndulationTarget(pwmEndValues[13]);
+      pwmEndValues[14] = randomNextUndulationTarget(pwmEndValues[14]);
+Serial.print("undulate to: ");
+Serial.print(pwmEndValues[0]);
+Serial.print(",");
+Serial.print(pwmEndValues[1]);
+Serial.print(",");
+Serial.print(pwmEndValues[2]);
+Serial.print(",");
+Serial.print(pwmEndValues[3]);
+Serial.print(",");
+Serial.println(pwmEndValues[4]);
+      dimValue = 1000;
+      dimProgress = dimValue;
+    }
+  }
 }
 
 
@@ -441,26 +568,36 @@ void dimLoop(){
           // formula for dimming progress:
           // diff = end-start                10-5      = 5     5-10          = -5
           // value = (diff*progress)+start   (5*0.5)+5 = 7,5   (-5*0,5)+(-5) = -7,5
-          int rVal =  ((pwmEndValues[0]-pwmStartValues[0])*(dimValue-dimProgress)/dimValue)+pwmStartValues[0];
-          int gVal =  ((pwmEndValues[1]-pwmStartValues[1])*(dimValue-dimProgress)/dimValue)+pwmStartValues[1];
-          int bVal =  ((pwmEndValues[2]-pwmStartValues[2])*(dimValue-dimProgress)/dimValue)+pwmStartValues[2];
-          int wwVal = ((pwmEndValues[3]-pwmStartValues[3])*(dimValue-dimProgress)/dimValue)+pwmStartValues[3];
-          int cwVal = ((pwmEndValues[4]-pwmStartValues[4])*(dimValue-dimProgress)/dimValue)+pwmStartValues[4];
-          pwm0.setOutput(0, rVal);
-          pwm0.setOutput(1, gVal);
-          pwm0.setOutput(2, bVal);
-          pwm0.setOutput(3, wwVal);
-          pwm0.setOutput(4, cwVal);
-          pwm0.setOutput(5, rVal);
-          pwm0.setOutput(6, gVal);
-          pwm0.setOutput(7, bVal);
-          pwm0.setOutput(8, wwVal);
-          pwm0.setOutput(9, cwVal);
-          pwm0.setOutput(10, rVal);
-          pwm0.setOutput(11, gVal);
-          pwm0.setOutput(12, bVal);
-          pwm0.setOutput(13, wwVal);
-          pwm0.setOutput(14, cwVal);
+          int rVal0 =  ((pwmEndValues[0]-pwmStartValues[0])*(dimValue-dimProgress)/dimValue)+pwmStartValues[0];
+          int gVal0 =  ((pwmEndValues[1]-pwmStartValues[1])*(dimValue-dimProgress)/dimValue)+pwmStartValues[1];
+          int bVal0 =  ((pwmEndValues[2]-pwmStartValues[2])*(dimValue-dimProgress)/dimValue)+pwmStartValues[2];
+          int wwVal0 = ((pwmEndValues[3]-pwmStartValues[3])*(dimValue-dimProgress)/dimValue)+pwmStartValues[3];
+          int cwVal0 = ((pwmEndValues[4]-pwmStartValues[4])*(dimValue-dimProgress)/dimValue)+pwmStartValues[4];
+          int rVal1 =  ((pwmEndValues[5]-pwmStartValues[5])*(dimValue-dimProgress)/dimValue)+pwmStartValues[5];
+          int gVal1 =  ((pwmEndValues[6]-pwmStartValues[6])*(dimValue-dimProgress)/dimValue)+pwmStartValues[6];
+          int bVal1 =  ((pwmEndValues[7]-pwmStartValues[7])*(dimValue-dimProgress)/dimValue)+pwmStartValues[7];
+          int wwVal1 = ((pwmEndValues[8]-pwmStartValues[8])*(dimValue-dimProgress)/dimValue)+pwmStartValues[8];
+          int cwVal1 = ((pwmEndValues[9]-pwmStartValues[9])*(dimValue-dimProgress)/dimValue)+pwmStartValues[9];
+          int rVal2 =  ((pwmEndValues[10]-pwmStartValues[10])*(dimValue-dimProgress)/dimValue)+pwmStartValues[10];
+          int gVal2 =  ((pwmEndValues[11]-pwmStartValues[11])*(dimValue-dimProgress)/dimValue)+pwmStartValues[11];
+          int bVal2 =  ((pwmEndValues[12]-pwmStartValues[12])*(dimValue-dimProgress)/dimValue)+pwmStartValues[12];
+          int wwVal2 = ((pwmEndValues[13]-pwmStartValues[13])*(dimValue-dimProgress)/dimValue)+pwmStartValues[13];
+          int cwVal2 = ((pwmEndValues[14]-pwmStartValues[14])*(dimValue-dimProgress)/dimValue)+pwmStartValues[14];
+          pwm0.setOutput(0, rVal0);
+          pwm0.setOutput(1, gVal0);
+          pwm0.setOutput(2, bVal0);
+          pwm0.setOutput(3, wwVal0);
+          pwm0.setOutput(4, cwVal0);
+          pwm0.setOutput(5, rVal1);
+          pwm0.setOutput(6, gVal1);
+          pwm0.setOutput(7, bVal1);
+          pwm0.setOutput(8, wwVal1);
+          pwm0.setOutput(9, cwVal1);
+          pwm0.setOutput(10, rVal2);
+          pwm0.setOutput(11, gVal2);
+          pwm0.setOutput(12, bVal2);
+          pwm0.setOutput(13, wwVal2);
+          pwm0.setOutput(14, cwVal2);
         }else{
           // dimming done, set final values and update dimming values for next tim
           pwmStartValues[0] = pwmEndValues[0];
