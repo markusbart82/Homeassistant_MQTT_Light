@@ -13,8 +13,6 @@
 /*
  * TODO:
  * - add multiple lamps capability with PCA9685 controller (using effects defined in home assistant MQTT Light)
- * - add sensor inputs for stand-alone use with PIR sensors
- * - add WIFI hardware switch for stand-alone use
  */
 
 WiFiClient espClient;
@@ -30,12 +28,6 @@ PCA9685 pwm0;
 // I2C
 #define SCL_PIN 5
 #define SDA_PIN 4
-// digital inputs for PIR sensors or similar
-#define SENSE1_PIN 12
-#define SENSE2_PIN 14
-// WIFI switch
-#define WIFI_PIN 9
-
 // stand-alone mode (i.e. WIFI disabled) timeout in seconds for external sensors to turn off the lamp again
 #define SENSE_TIMEOUT 60
 
@@ -43,18 +35,11 @@ PCA9685 pwm0;
 #define WW_TEMP 2300
 #define CW_TEMP 7000
 
-// sensor logic config (normal: act on rising edge, inverted: act on falling edge)
-#define SENSE1_INVERT false
-#define SENSE2_INVERT false
-
 // valid PWM values go up to this number
 #define PWM_RANGE 4095 // 4095 means 12 bit precision
 
 
 // global variables
-
-// wifi switch
-bool wifiEnabled = false;
 
 // module name, schema: topicPrefix namePrefix uid topicPostfix
 char namePrefix[] = "ESP-dimmer-";
@@ -133,9 +118,6 @@ void setup()
   // configure pins
   pinMode(SCL_PIN, OUTPUT);
   pinMode(SDA_PIN, OUTPUT);
-  pinMode(SENSE1_PIN, INPUT_PULLUP);
-  pinMode(SENSE2_PIN, INPUT_PULLUP);
-  pinMode(WIFI_PIN, INPUT_PULLUP);
   pinMode(LED_BUILTIN, OUTPUT);
 
   // start I2C bus
@@ -146,120 +128,107 @@ void setup()
   delay(100);
   Serial.println("Setup");
 
-  // configure input ISRs
-  attachInterrupt(digitalPinToInterrupt(SENSE1_PIN), isrSense, SENSE1_INVERT?FALLING:RISING);
-  attachInterrupt(digitalPinToInterrupt(SENSE2_PIN), isrSense, SENSE2_INVERT?FALLING:RISING);
-
-  // read WIFI switch
-  wifiEnabled = (digitalRead(WIFI_PIN)==HIGH)?true:false;
-  
   // setup PWM
   Serial.println("...PWM");
   pwm0.begin();
 
-  if(wifiEnabled){
-    // init wifi and MQTT
-    Serial.println("...wifi");
-    setup_wifi();
-    Serial.println("...mqtt");
-    client.setServer(MQTT_BROKER, 1883);
-    client.setCallback(receiveMessage);
-
-    // build topics - yes I know this can be made prettier, shut up!
-    Serial.println("...topics");
-    strcpy(clientName, namePrefix);
-    strcat(clientName, macAddressUid);
-  
-    strcpy(configTopic, topicPrefix);
-    strcat(configTopic, clientName);
-    strcat(configTopic, topicPostfixConfig);
-  
-    strcpy(stateTopic, topicPrefix);
-    strcat(stateTopic, clientName);
-    strcat(stateTopic, topicPostfixState);
-    
-    strcpy(commandTopic, topicPrefix);
-    strcat(commandTopic, clientName);
-    strcat(commandTopic, topicPostfixCommand);
-
-// 128 Bits message length:                                                                                                                        ---->|
-    strcpy(configMessage0, "{\"name\":\"esp_dimmer\",\"schema\":\"json\",\"brightness\":true,\"clrm\":true,\"min_mireds\":142,\"max_mireds\":435");
-    strcpy(configMessage1, ",\"sup_clrm\":[\"color_temp\",\"rgb\"]");
-    strcpy(configMessage2, ",\"dev\":{\"identifiers\":[\"");
-    strcat(configMessage2, clientName);
-    strcpy(configMessage3, "\"],\"name\":\"esp_dimmer\"},\"stat_t\":\"");
-    strcat(configMessage3, stateTopic);
-    strcpy(configMessage4, "\",\"cmd_t\":\"");
-    strcat(configMessage4, commandTopic);
-    strcpy(configMessage5, "\",\"uniq_id\":\"");
-    strcat(configMessage5, clientName);
-    strcat(configMessage5, "\"}");
-  
-    Serial.print("clientName: ");
-    Serial.println(clientName);
-    Serial.print("configTopic: ");
-    Serial.println(configTopic);
-    Serial.print("stateTopic: ");
-    Serial.println(stateTopic);
-    Serial.print("commandTopic: ");
-    Serial.println(commandTopic);
-  }else{
-    Serial.println("WIFI disabled by hardware switch");
-  }
-
-  // turn off internal LED
-  Serial.println("...initial LED values");
-  digitalWrite(LED_BUILTIN, HIGH);
-
   // Power on default: neutral white
+  Serial.println("...default power on state: neutral white");
   pwm0.setOutput(0, 0); // red
   pwm0.setOutput(1, 0); // green
   pwm0.setOutput(2, 0); // blue
   pwm0.setOutput(3, 2047); // warm white
   pwm0.setOutput(4, 2047); // cold white
   
+  // init wifi and MQTT
+  Serial.println("...wifi");
+  setup_wifi();
+  Serial.println("...mqtt");
+  client.setServer(MQTT_BROKER, 1883);
+  client.setCallback(receiveMessage);
+
+  // build topics - yes I know this can be made prettier, shut up!
+  Serial.println("...topics");
+  strcpy(clientName, namePrefix);
+  strcat(clientName, macAddressUid);
+
+  strcpy(configTopic, topicPrefix);
+  strcat(configTopic, clientName);
+  strcat(configTopic, topicPostfixConfig);
+
+  strcpy(stateTopic, topicPrefix);
+  strcat(stateTopic, clientName);
+  strcat(stateTopic, topicPostfixState);
+  
+  strcpy(commandTopic, topicPrefix);
+  strcat(commandTopic, clientName);
+  strcat(commandTopic, topicPostfixCommand);
+
+// 128 Bits message length:                                                                                                                        ---->|
+  strcpy(configMessage0, "{\"name\":\"esp_dimmer\",\"schema\":\"json\",\"brightness\":true,\"clrm\":true,\"min_mireds\":142,\"max_mireds\":435");
+  strcpy(configMessage1, ",\"sup_clrm\":[\"color_temp\",\"rgb\"]");
+  strcpy(configMessage2, ",\"dev\":{\"identifiers\":[\"");
+  strcat(configMessage2, clientName);
+  strcpy(configMessage3, "\"],\"name\":\"esp_dimmer\"},\"stat_t\":\"");
+  strcat(configMessage3, stateTopic);
+  strcpy(configMessage4, "\",\"cmd_t\":\"");
+  strcat(configMessage4, commandTopic);
+  strcpy(configMessage5, "\",\"uniq_id\":\"");
+  strcat(configMessage5, clientName);
+  strcat(configMessage5, "\"}");
+
+  Serial.print("clientName: ");
+  Serial.println(clientName);
+  Serial.print("configTopic: ");
+  Serial.println(configTopic);
+  Serial.print("stateTopic: ");
+  Serial.println(stateTopic);
+  Serial.print("commandTopic: ");
+  Serial.println(commandTopic);
+
+  // turn off internal LED
+  Serial.println("...initial LED values");
+  digitalWrite(LED_BUILTIN, HIGH);
+
   Serial.println("Initialization done.");
 }
 
 
 void loop()
 {
-  if(wifiEnabled){
-    if (!client.connected()) {
-      while (!client.connected()) {
-        Serial.println("(re)connecting to broker...");
-        client.connect(clientName,MQTT_USER,MQTT_PASS);
-  
-        delay(100);
-      }
-      // discovery topic for autoconfiguration
-      int configMessageLength = 0;
-      configMessageLength += strlen(configMessage0);
-      configMessageLength += strlen(configMessage1);
-      configMessageLength += strlen(configMessage2);
-      configMessageLength += strlen(configMessage3);
-      configMessageLength += strlen(configMessage4);
-      configMessageLength += strlen(configMessage5);
-      client.beginPublish(configTopic, configMessageLength, true);
-      client.write((const unsigned char*)configMessage0, strlen(configMessage0));
-      client.write((const unsigned char*)configMessage1, strlen(configMessage1));
-      client.write((const unsigned char*)configMessage2, strlen(configMessage2));
-      client.write((const unsigned char*)configMessage3, strlen(configMessage3));
-      client.write((const unsigned char*)configMessage4, strlen(configMessage4));
-      client.write((const unsigned char*)configMessage5, strlen(configMessage5));
-      client.endPublish();
-      // state topic for defined initial state
-      sendCurrentState();
-      // command topic subscription
-      client.subscribe(commandTopic);
-      
-      Serial.println("All MQTT topics published/subscribed, starting normal operation.");
+  if (!client.connected()) {
+    while (!client.connected()) {
+      Serial.println("(re)connecting to broker...");
+      client.connect(clientName,MQTT_USER,MQTT_PASS);
+
+      delay(100);
     }
-    client.loop();
+    // discovery topic for autoconfiguration
+    int configMessageLength = 0;
+    configMessageLength += strlen(configMessage0);
+    configMessageLength += strlen(configMessage1);
+    configMessageLength += strlen(configMessage2);
+    configMessageLength += strlen(configMessage3);
+    configMessageLength += strlen(configMessage4);
+    configMessageLength += strlen(configMessage5);
+    client.beginPublish(configTopic, configMessageLength, true);
+    client.write((const unsigned char*)configMessage0, strlen(configMessage0));
+    client.write((const unsigned char*)configMessage1, strlen(configMessage1));
+    client.write((const unsigned char*)configMessage2, strlen(configMessage2));
+    client.write((const unsigned char*)configMessage3, strlen(configMessage3));
+    client.write((const unsigned char*)configMessage4, strlen(configMessage4));
+    client.write((const unsigned char*)configMessage5, strlen(configMessage5));
+    client.endPublish();
+    // state topic for defined initial state
+    sendCurrentState();
+    // command topic subscription
+    client.subscribe(commandTopic);
+    
+    Serial.println("All MQTT topics published/subscribed, starting normal operation.");
   }
+  client.loop();
   dimLoop();
   flashLoop();
-  senseLoop();
 }
 
 
@@ -283,9 +252,7 @@ void sendCurrentState(){
   }
   char output[128];
   serializeJson(message, output);
-  if(wifiEnabled){
-    client.publish(stateTopic,output,true);
-  }
+  client.publish(stateTopic,output,true);
 }
 
 
@@ -537,35 +504,6 @@ void flashLoop(){
         pwmEndValues[3] = pwmStartValues[3];
         pwmEndValues[4] = pwmStartValues[4];
       }
-    }
-  }
-}
-
-
-void senseLoop(){
-  if(senseTimeout>0){
-    int now = millis();
-    // overflow handling, as millis() will eventually overflow
-    if(now-senseTimer<0){
-      senseTimer = now;
-    }
-    if(now-senseTimer > 1000){
-      senseTimer = now;
-      
-      senseTimeout--;
-      if(senseTimeout > 0){
-        // turn on lamp
-        valueRin = 255;
-        valueGin = 255;
-        valueBin = 255;
-        valueCTin = 128;
-      }else{
-        // turn off lamp
-        valueRin = 0;
-        valueGin = 0;
-        valueBin = 0;
-      }
-      updateLEDs();
     }
   }
 }
