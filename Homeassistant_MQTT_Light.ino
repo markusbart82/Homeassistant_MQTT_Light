@@ -10,11 +10,6 @@
 #include "ArduinoJson.h"
 #include "secrets.h"
 
-/*
- * TODO:
- * - add multiple lamps capability with PCA9685 controller (using effects defined in home assistant MQTT Light)
- */
-
 WiFiClient espClient;
 PubSubClient client(espClient);
 PCA9685 pwm0;
@@ -68,8 +63,8 @@ volatile int valueCTin=215; // in mireds
 volatile int valueCTK=4650; // in kelvin
 
 // PWM related values, dimming occurs start (= current) to end (= new values just set by incoming message)
-volatile int pwmStartValues[5] = {0,0,0,0,0}; // 0..PWM_RANGE, the brightness of each channel. Ordered RGBWC.
-volatile int pwmEndValues[5] = {0,0,0,PWM_RANGE/2,PWM_RANGE/2}; // 0..PWM_RANGE, the brightness of each channel. Ordered RGBWC.
+volatile int pwmStartValues[15] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; // 0..PWM_RANGE, the brightness of each channel. Ordered RGBWC.
+volatile int pwmEndValues[15] = {0,0,0,PWM_RANGE/2,PWM_RANGE/2,0,0,0,PWM_RANGE/2,PWM_RANGE/2,0,0,0,PWM_RANGE/2,PWM_RANGE/2}; // 0..PWM_RANGE, the brightness of each channel. Ordered RGBWC.
 
 // dimming related values
 volatile int dimValue=100; // must be AT LEAST 1, duration of the dim in ms
@@ -132,13 +127,23 @@ void setup()
   Serial.println("...PWM");
   pwm0.begin();
 
-  // Power on default: neutral white
+  // Power on default: neutral white on all three channels
   Serial.println("...default power on state: neutral white");
   pwm0.setOutput(0, 0); // red
   pwm0.setOutput(1, 0); // green
   pwm0.setOutput(2, 0); // blue
   pwm0.setOutput(3, 2047); // warm white
   pwm0.setOutput(4, 2047); // cold white
+  pwm0.setOutput(5, 0); // red
+  pwm0.setOutput(6, 0); // green
+  pwm0.setOutput(7, 0); // blue
+  pwm0.setOutput(8, 2047); // warm white
+  pwm0.setOutput(9, 2047); // cold white
+  pwm0.setOutput(10, 0); // red
+  pwm0.setOutput(11, 0); // green
+  pwm0.setOutput(12, 0); // blue
+  pwm0.setOutput(13, 2047); // warm white
+  pwm0.setOutput(14, 2047); // cold white
   
   // init wifi and MQTT
   Serial.println("...wifi");
@@ -375,6 +380,16 @@ void updateLEDs(){
   pwmEndValues[2] = pwmTable[(valueBin - whiteContent)];
   pwmEndValues[3] = pwmTable[valueWWfull * whiteContent / 255];
   pwmEndValues[4] = pwmTable[valueCWfull * whiteContent / 255];
+  pwmEndValues[5] = pwmTable[(valueRin - whiteContent)];
+  pwmEndValues[6] = pwmTable[(valueGin - whiteContent)];
+  pwmEndValues[7] = pwmTable[(valueBin - whiteContent)];
+  pwmEndValues[8] = pwmTable[valueWWfull * whiteContent / 255];
+  pwmEndValues[9] = pwmTable[valueCWfull * whiteContent / 255];
+  pwmEndValues[10] = pwmTable[(valueRin - whiteContent)];
+  pwmEndValues[11] = pwmTable[(valueGin - whiteContent)];
+  pwmEndValues[12] = pwmTable[(valueBin - whiteContent)];
+  pwmEndValues[13] = pwmTable[valueWWfull * whiteContent / 255];
+  pwmEndValues[14] = pwmTable[valueCWfull * whiteContent / 255];
   // start default transition to new color
   dimProgress = dimValue;
 
@@ -426,9 +441,9 @@ void dimLoop(){
           // formula for dimming progress:
           // diff = end-start                10-5      = 5     5-10          = -5
           // value = (diff*progress)+start   (5*0.5)+5 = 7,5   (-5*0,5)+(-5) = -7,5
-          int rVal = ((pwmEndValues[0]-pwmStartValues[0])*(dimValue-dimProgress)/dimValue)+pwmStartValues[0];
-          int gVal = ((pwmEndValues[1]-pwmStartValues[1])*(dimValue-dimProgress)/dimValue)+pwmStartValues[1];
-          int bVal = ((pwmEndValues[2]-pwmStartValues[2])*(dimValue-dimProgress)/dimValue)+pwmStartValues[2];
+          int rVal =  ((pwmEndValues[0]-pwmStartValues[0])*(dimValue-dimProgress)/dimValue)+pwmStartValues[0];
+          int gVal =  ((pwmEndValues[1]-pwmStartValues[1])*(dimValue-dimProgress)/dimValue)+pwmStartValues[1];
+          int bVal =  ((pwmEndValues[2]-pwmStartValues[2])*(dimValue-dimProgress)/dimValue)+pwmStartValues[2];
           int wwVal = ((pwmEndValues[3]-pwmStartValues[3])*(dimValue-dimProgress)/dimValue)+pwmStartValues[3];
           int cwVal = ((pwmEndValues[4]-pwmStartValues[4])*(dimValue-dimProgress)/dimValue)+pwmStartValues[4];
           pwm0.setOutput(0, rVal);
@@ -436,6 +451,16 @@ void dimLoop(){
           pwm0.setOutput(2, bVal);
           pwm0.setOutput(3, wwVal);
           pwm0.setOutput(4, cwVal);
+          pwm0.setOutput(5, rVal);
+          pwm0.setOutput(6, gVal);
+          pwm0.setOutput(7, bVal);
+          pwm0.setOutput(8, wwVal);
+          pwm0.setOutput(9, cwVal);
+          pwm0.setOutput(10, rVal);
+          pwm0.setOutput(11, gVal);
+          pwm0.setOutput(12, bVal);
+          pwm0.setOutput(13, wwVal);
+          pwm0.setOutput(14, cwVal);
         }else{
           // dimming done, set final values and update dimming values for next tim
           pwmStartValues[0] = pwmEndValues[0];
@@ -443,11 +468,31 @@ void dimLoop(){
           pwmStartValues[2] = pwmEndValues[2];
           pwmStartValues[3] = pwmEndValues[3];
           pwmStartValues[4] = pwmEndValues[4];
+          pwmStartValues[5] = pwmEndValues[5];
+          pwmStartValues[6] = pwmEndValues[6];
+          pwmStartValues[7] = pwmEndValues[7];
+          pwmStartValues[8] = pwmEndValues[8];
+          pwmStartValues[9] = pwmEndValues[9];
+          pwmStartValues[10] = pwmEndValues[10];
+          pwmStartValues[11] = pwmEndValues[11];
+          pwmStartValues[12] = pwmEndValues[12];
+          pwmStartValues[13] = pwmEndValues[13];
+          pwmStartValues[14] = pwmEndValues[14];
           pwm0.setOutput(0, pwmEndValues[0]);
           pwm0.setOutput(1, pwmEndValues[1]);
           pwm0.setOutput(2, pwmEndValues[2]);
           pwm0.setOutput(3, pwmEndValues[3]);
           pwm0.setOutput(4, pwmEndValues[4]);
+          pwm0.setOutput(5, pwmEndValues[5]);
+          pwm0.setOutput(6, pwmEndValues[6]);
+          pwm0.setOutput(7, pwmEndValues[7]);
+          pwm0.setOutput(8, pwmEndValues[8]);
+          pwm0.setOutput(9, pwmEndValues[9]);
+          pwm0.setOutput(10, pwmEndValues[10]);
+          pwm0.setOutput(11, pwmEndValues[11]);
+          pwm0.setOutput(12, pwmEndValues[12]);
+          pwm0.setOutput(13, pwmEndValues[13]);
+          pwm0.setOutput(14, pwmEndValues[14]);
         }
       }else{
         // at end of dim, reset to default dim time
@@ -485,12 +530,32 @@ void flashLoop(){
           pwm0.setOutput(2, pwmEndValues[2]);
           pwm0.setOutput(3, pwmEndValues[3]);
           pwm0.setOutput(4, pwmEndValues[4]);
+          pwm0.setOutput(5, pwmEndValues[5]);
+          pwm0.setOutput(6, pwmEndValues[6]);
+          pwm0.setOutput(7, pwmEndValues[7]);
+          pwm0.setOutput(8, pwmEndValues[8]);
+          pwm0.setOutput(9, pwmEndValues[9]);
+          pwm0.setOutput(10, pwmEndValues[10]);
+          pwm0.setOutput(11, pwmEndValues[11]);
+          pwm0.setOutput(12, pwmEndValues[12]);
+          pwm0.setOutput(13, pwmEndValues[13]);
+          pwm0.setOutput(14, pwmEndValues[14]);
         }else{
           pwm0.setOutput(0, 0);
           pwm0.setOutput(1, 0);
           pwm0.setOutput(2, 0);
           pwm0.setOutput(3, 0);
           pwm0.setOutput(4, 0);
+          pwm0.setOutput(5, 0);
+          pwm0.setOutput(6, 0);
+          pwm0.setOutput(7, 0);
+          pwm0.setOutput(8, 0);
+          pwm0.setOutput(9, 0);
+          pwm0.setOutput(10, 0);
+          pwm0.setOutput(11, 0);
+          pwm0.setOutput(12, 0);
+          pwm0.setOutput(13, 0);
+          pwm0.setOutput(14, 0);
         }
       }
       
@@ -503,6 +568,16 @@ void flashLoop(){
         pwmEndValues[2] = pwmStartValues[2];
         pwmEndValues[3] = pwmStartValues[3];
         pwmEndValues[4] = pwmStartValues[4];
+        pwmEndValues[5] = pwmStartValues[5];
+        pwmEndValues[6] = pwmStartValues[6];
+        pwmEndValues[7] = pwmStartValues[7];
+        pwmEndValues[8] = pwmStartValues[8];
+        pwmEndValues[9] = pwmStartValues[9];
+        pwmEndValues[10] = pwmStartValues[10];
+        pwmEndValues[11] = pwmStartValues[11];
+        pwmEndValues[12] = pwmStartValues[12];
+        pwmEndValues[13] = pwmStartValues[13];
+        pwmEndValues[14] = pwmStartValues[14];
       }
     }
   }
