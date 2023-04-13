@@ -23,8 +23,6 @@ PCA9685 pwm0;
 // I2C
 #define SCL_PIN 5
 #define SDA_PIN 4
-// stand-alone mode (i.e. WIFI disabled) timeout in seconds for external sensors to turn off the lamp again
-#define SENSE_TIMEOUT 60
 
 // LED strip white color temperatures in Kelvin
 #define WW_TEMP 2300
