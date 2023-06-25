@@ -460,68 +460,7 @@
     },
     "net_colors": null,
     "netclass_assignments": null,
-    "netclass_patterns": [
-      {
-        "netclass": "HiCurrent",
-        "pattern": "Net-(J23-Pad1)"
-      },
-      {
-        "netclass": "HiCurrent",
-        "pattern": "Net-(J24-Pad1)"
-      },
-      {
-        "netclass": "HiCurrent",
-        "pattern": "Net-(J25-Pad1)"
-      },
-      {
-        "netclass": "HiCurrent",
-        "pattern": "Net-(J26-Pad1)"
-      },
-      {
-        "netclass": "HiCurrent",
-        "pattern": "Net-(J27-Pad1)"
-      },
-      {
-        "netclass": "HiCurrent",
-        "pattern": "Net-(J29-Pad1)"
-      },
-      {
-        "netclass": "HiCurrent",
-        "pattern": "Net-(J30-Pad1)"
-      },
-      {
-        "netclass": "HiCurrent",
-        "pattern": "Net-(J31-Pad1)"
-      },
-      {
-        "netclass": "HiCurrent",
-        "pattern": "Net-(J32-Pad1)"
-      },
-      {
-        "netclass": "HiCurrent",
-        "pattern": "Net-(J33-Pad1)"
-      },
-      {
-        "netclass": "HiCurrent",
-        "pattern": "Net-(J35-Pad1)"
-      },
-      {
-        "netclass": "HiCurrent",
-        "pattern": "Net-(J36-Pad1)"
-      },
-      {
-        "netclass": "HiCurrent",
-        "pattern": "Net-(J37-Pad1)"
-      },
-      {
-        "netclass": "HiCurrent",
-        "pattern": "Net-(J38-Pad1)"
-      },
-      {
-        "netclass": "HiCurrent",
-        "pattern": "Net-(J39-Pad1)"
-      }
-    ]
+    "netclass_patterns": []
   },
   "pcbnew": {
     "last_paths": {
