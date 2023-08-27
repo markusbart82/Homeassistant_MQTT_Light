@@ -5169,7 +5169,7 @@
   (gr_text "RST" (at 121.92 74.422) (layer "B.SilkS") (tstamp 70ce92ec-f859-47ff-90e8-b3826b923c1b)
     (effects (font (size 1 1) (thickness 0.15)) (justify mirror))
   )
-  (gr_text "DRT" (at 123.19 81.28) (layer "B.SilkS") (tstamp 76817f2d-3a49-4af5-9a08-8777e001a398)
+  (gr_text "DTR" (at 123.19 81.28) (layer "B.SilkS") (tstamp 76817f2d-3a49-4af5-9a08-8777e001a398)
     (effects (font (size 1 1) (thickness 0.15)) (justify left bottom mirror))
   )
   (gr_text "RD" (at 96.52 93.091) (layer "B.SilkS") (tstamp 7c8766f1-7c03-44ca-a85c-d63dfa6e965a)
