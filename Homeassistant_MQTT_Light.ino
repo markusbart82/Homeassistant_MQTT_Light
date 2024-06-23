@@ -9,9 +9,15 @@
 #include <PCA9685.h>
 #include "ArduinoJson.h"
 #include "secrets.h"
+#include "channel.h"
+#include "channelmanager.h"
+#include "colorhandler.h"
+#include "messagehandler.h"
+#include "controller.h"
 
 WiFiClient espClient;
 PubSubClient client(espClient);
+
 PCA9685 pwm0;
 
 // serial outputs for debugging
@@ -19,6 +25,9 @@ PCA9685 pwm0;
 
 
 // GPIO config
+
+// output enable (low = enabled)
+#define OE_PIN 16
 
 // I2C
 #define SCL_PIN 5
@@ -75,11 +84,6 @@ volatile int flashProgress = 0; // must be set to value >0 to start flashing, de
 volatile int flashTimer = millis(); // variable used for timing the color flashing action
 
 // effects related values
-enum effect_t {
-  none = 0,
-  colorwheel = 1,
-  undulation = 2
-};
 volatile effect_t activeEffect = none;
 volatile int effectCounter = 0;
 
@@ -101,7 +105,9 @@ void setup_wifi() {
     delay(100);
   }
   
+#if(NODE_DEBUG == true)
   Serial.println(WiFi.localIP());
+#endif
 }
 
 
@@ -110,51 +116,55 @@ void setup()
   // configure pins
   pinMode(SCL_PIN, OUTPUT);
   pinMode(SDA_PIN, OUTPUT);
+  pinMode(OE_PIN, OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
 
   // start I2C bus
   Wire.begin();
+  Wire.setClock(400000); // PCA9685 supports up to 1 MHz (yet we currently use 400kHz for debugging)
   
   // init serial console
   Serial.begin(115200);
   delay(100);
+
+#if(NODE_DEBUG == true)
   Serial.println("Setup");
+#endif
 
   // random number generator
+#if(NODE_DEBUG == true)
   Serial.println("...RNG");
+#endif
   randomSeed(analogRead(A0));
   
   // setup PWM
+#if(NODE_DEBUG == true)
   Serial.println("...PWM");
+#endif
   pwm0.begin();
 
   // Power on default: neutral white on all three channels
+#if(NODE_DEBUG == true)
   Serial.println("...default power on state: neutral white");
-  pwm0.setOutput(0, 0); // red
-  pwm0.setOutput(1, 0); // green
-  pwm0.setOutput(2, 0); // blue
-  pwm0.setOutput(3, 2047); // warm white
-  pwm0.setOutput(4, 2047); // cold white
-  pwm0.setOutput(5, 0); // red
-  pwm0.setOutput(6, 0); // green
-  pwm0.setOutput(7, 0); // blue
-  pwm0.setOutput(8, 2047); // warm white
-  pwm0.setOutput(9, 2047); // cold white
-  pwm0.setOutput(10, 0); // red
-  pwm0.setOutput(11, 0); // green
-  pwm0.setOutput(12, 0); // blue
-  pwm0.setOutput(13, 2047); // warm white
-  pwm0.setOutput(14, 2047); // cold white
-  
+#endif
+  uint16_t values[15] = {0,0,0,2047,2047,0,0,0,2047,2047,0,0,0,2047,2047};
+  pwm0.setOutputs(15, values);
+
   // init wifi and MQTT
+#if(NODE_DEBUG == true)
   Serial.println("...wifi");
+#endif
   setup_wifi();
+#if(NODE_DEBUG == true)
   Serial.println("...mqtt");
+#endif
   client.setServer(MQTT_BROKER, 1883);
   client.setCallback(receiveMessage);
 
   // build topics - yes I know this can be made prettier, shut up!
+#if(NODE_DEBUG == true)
   Serial.println("...topics");
+#endif
   strcpy(clientName, namePrefix);
   strcat(clientName, macAddressUid);
 
@@ -171,7 +181,7 @@ void setup()
   strcat(commandTopic, topicPostfixCommand);
 
 // 128 Bits message length:                                                                                                                        ---->|
-  strcpy(configMessage0, "{\"name\":\"esp_dimmer\",\"schema\":\"json\",\"brightness\":true,\"clrm\":true,\"min_mireds\":142,\"max_mireds\":435");
+  strcpy(configMessage0, "{\"name\":\"esp_dimmer\",\"schema\":\"json\",\"brightness\":true,\"min_mirs\":142,\"max_mirs\":435");
   strcpy(configMessage1, ",\"sup_clrm\":[\"color_temp\",\"rgb\"],\"effect\":true,\"fx_list\":[\"none\",\"colorwheel\",\"undulation\"]");
   strcpy(configMessage2, ",\"dev\":{\"identifiers\":[\"");
   strcat(configMessage2, clientName);
@@ -183,6 +193,7 @@ void setup()
   strcat(configMessage5, clientName);
   strcat(configMessage5, "\"}");
 
+#if(NODE_DEBUG == true)
   Serial.print("clientName: ");
   Serial.println(clientName);
   Serial.print("configTopic: ");
@@ -191,12 +202,20 @@ void setup()
   Serial.println(stateTopic);
   Serial.print("commandTopic: ");
   Serial.println(commandTopic);
+#endif
 
   // turn off internal LED
+#if(NODE_DEBUG == true)
   Serial.println("...initial LED values");
+#endif
   digitalWrite(LED_BUILTIN, HIGH);
 
+  // enable outputs
+  digitalWrite(OE_PIN, LOW);
+
+#if(NODE_DEBUG == true)
   Serial.println("Initialization done.");
+#endif
 }
 
 
@@ -204,7 +223,9 @@ void loop()
 {
   if (!client.connected()) {
     while (!client.connected()) {
+#if(NODE_DEBUG == true)
       Serial.println("(re)connecting to broker...");
+#endif
       client.connect(clientName,MQTT_USER,MQTT_PASS);
 
       delay(100);
@@ -230,7 +251,9 @@ void loop()
     // command topic subscription
     client.subscribe(commandTopic);
     
+#if(NODE_DEBUG == true)
     Serial.println("All MQTT topics published/subscribed, starting normal operation.");
+#endif
   }
   client.loop();
   dimLoop();
@@ -525,16 +548,18 @@ void effectsLoop(){
       pwmEndValues[12] = randomNextUndulationTarget(pwmEndValues[12]);
       pwmEndValues[13] = randomNextUndulationTarget(pwmEndValues[13]);
       pwmEndValues[14] = randomNextUndulationTarget(pwmEndValues[14]);
-Serial.print("undulate to: ");
-Serial.print(pwmEndValues[0]);
-Serial.print(",");
-Serial.print(pwmEndValues[1]);
-Serial.print(",");
-Serial.print(pwmEndValues[2]);
-Serial.print(",");
-Serial.print(pwmEndValues[3]);
-Serial.print(",");
-Serial.println(pwmEndValues[4]);
+#if(NODE_DEBUG == true)
+      Serial.print("undulate to: ");
+      Serial.print(pwmEndValues[0]);
+      Serial.print(",");
+      Serial.print(pwmEndValues[1]);
+      Serial.print(",");
+      Serial.print(pwmEndValues[2]);
+      Serial.print(",");
+      Serial.print(pwmEndValues[3]);
+      Serial.print(",");
+      Serial.println(pwmEndValues[4]);
+#endif
       dimValue = 1000;
       dimProgress = dimValue;
     }
