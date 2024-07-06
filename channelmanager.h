@@ -31,6 +31,9 @@ class Channelmanager{
     // get a channel to interact with
     Channel* getChannel(uint8_t channelNumber);
     
+    // get a controller to interact with
+    Controller* getController(uint8_t controllerNumber);
+        
 };
 
 #endif

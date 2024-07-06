@@ -24,7 +24,7 @@ void Channelmanager::loop(){
   // check for updates per channel to trigger their data updates
   for(uint8_t controllerIterator = 0; controllerIterator < this->numberOfControllers; controllerIterator++){
     bool updateNeeded = false;
-    for(channelIterator = controllerIterator * 3; channelIterator < ((controllerIterator+1) * 3) && (channelIterator < this->numberOfChannels); channelIterator++){
+    for(uint8_t channelIterator = controllerIterator * 3; channelIterator < ((controllerIterator+1) * 3) && (channelIterator < this->numberOfChannels); channelIterator++){
       // check the up to 3 channels connected to this controller
       if(channels[channelIterator]->isUpdated()){updateNeeded = true;}
     }
@@ -36,4 +36,8 @@ void Channelmanager::loop(){
 
 Channel* Channelmanager::getChannel(uint8_t channelNumber){
   return channels[channelNumber];
+}
+
+Controller* Channelmanager::getController(uint8_t controllerNumber){
+  return controllers[controllerNumber];
 }
