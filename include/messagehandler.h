@@ -43,6 +43,7 @@ class Messagehandler{
     char configTopic[128] = "\0";
     char stateTopic[128] = "\0";
     char commandTopic[128] = "\0";
+    // TODO: name for MQTT client
     
     // config message snippets (send one per channel)
     const char * configMsgPart1 = "{\"uniq_id\":\"esp_dimmer_";

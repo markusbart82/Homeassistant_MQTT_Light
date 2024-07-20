@@ -60,6 +60,7 @@ void setup() {
   // enable outputs
   digitalWrite(OE_PIN, LOW);
 
+  // TODO: do other initialization stuff
 }
 
 
@@ -70,8 +71,10 @@ void loop() {
       // pubSubClient.connect(clientName,MQTT_USER,MQTT_PASS); // TODO: fix this, the variable clientName isn't known here
       delay(100);
     }
-    // TODO: do MQTT stuff
-    // client.subscribe(commandTopic); // TODO: fix this
+    // send discovery message
+    messagehandler.sendAutoDiscoveryMessage(pubSubClient, 3); // TODO: make this dynamic - for now, it's 3 static channels
+    // TODO: send initial state topic
+    // TODO: subscribe to command topic
   }
 
   // update channels, do all the dimming etc. and send commands to physical controllers
