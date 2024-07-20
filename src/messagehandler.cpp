@@ -75,7 +75,7 @@ void Messagehandler::sendAutoDiscoveryMessage(PubSubClient client, uint8 numberO
 
 // create and send state message for one channel (RGB + colortemp)
 void Messagehandler::sendStateMessage(PubSubClient client, uint8 channelNumber, uint8 r, uint8 g, uint8 b, uint8 ct, effect_t fx){
-  StaticJsonDocument<128> message;
+  JsonDocument message;
   if(r==0 && g==0 && b==0){
     message["state"] = "OFF";
   }else{
