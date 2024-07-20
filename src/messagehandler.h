@@ -83,6 +83,9 @@ class Messagehandler{
     // parse command message and extract commands from it
     // TODO: find a good way to extract all necessary information for other classes to use
     //void parseMessage(char* topic, byte* payload, unsigned int length, ???);
+
+    // TODO: upgrade autodiscovery to announce individually controllable channels
+
 };
 
 #endif
