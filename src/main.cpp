@@ -49,7 +49,7 @@ void setup() {
 
   // configure MQTT broker
   pubSubClient.setServer(MQTT_BROKER, 1883);
-  // client.setCallback(receiveMessage); // TODO: fix this
+  pubSubClient.setCallback(&Messagehandler::parseMessage);
 
   // random number generator
   randomSeed(analogRead(A0));

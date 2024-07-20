@@ -115,3 +115,9 @@ void Messagehandler::sendStateMessage(PubSubClient client, uint8 channelNumber, 
   // send message
   client.publish(stateTopic,output,true);
 }
+
+// parse command message and extract commands from it
+void Messagehandler::parseMessage(char* topic, byte* payload, unsigned int length){
+  // TODO: do some implementation here
+}
+

@@ -81,8 +81,7 @@ class Messagehandler{
     void sendStateMessage(PubSubClient client, uint8 channelNumber, uint8 r, uint8 g, uint8 b, uint8 ct, effect_t fx);
     
     // parse command message and extract commands from it
-    // TODO: find a good way to extract all necessary information for other classes to use
-    //void parseMessage(char* topic, byte* payload, unsigned int length, ???);
+    static void parseMessage(char* topic, byte* payload, unsigned int length);
 
     // TODO: upgrade autodiscovery to announce individually controllable channels
 
