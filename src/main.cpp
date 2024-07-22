@@ -68,7 +68,7 @@ void loop() {
   // make sure we only communicate with an active connection
   if (!pubSubClient.connected()) {
     while (!pubSubClient.connected()) {
-      // pubSubClient.connect(clientName,MQTT_USER,MQTT_PASS); // TODO: fix this, the variable clientName isn't known here
+      // pubSubClient.connect(clientName,MQTT_USER,MQTT_PASS); // FIXME: fix this, the variable clientName isn't known here
       delay(100);
     }
     // send discovery message
