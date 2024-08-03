@@ -6,13 +6,17 @@
 Messagehandler::Messagehandler(){
 }
 
-// get mac address to use as part of the device name
+// get mac address to use as part of the device name (and set client name)
 void Messagehandler::getMacAddress(){
   // this stupid mac address trickery seems to be necessary because there seems to be no working conversion between unsigned char[] and char[]
   unsigned char mac[6];
   WiFi.macAddress(mac);
   int macNum = mac[0]*100000 + mac[1]*10000 + mac[2]*1000 + mac[3]*100 + mac[4]*10 + mac[5];
   itoa(macNum, this->macAddressUid, 10);
+
+  // now that all necessary info is present, set the client name
+  strcpy(mqttClientName, clientNamePrefix);
+  strcat(mqttClientName, macAddressUid);
 }
 
 // create and send autodiscovery message for given number of channels (plus the sum channel "0")
@@ -121,3 +125,7 @@ void Messagehandler::parseMessage(char* topic, byte* payload, unsigned int lengt
   // TODO: do some implementation here
 }
 
+// return client name for use externally
+char * Messagehandler::getClientName(){
+  return this->mqttClientName;
+}

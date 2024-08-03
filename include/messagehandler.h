@@ -43,7 +43,9 @@ class Messagehandler{
     char configTopic[128] = "\0";
     char stateTopic[128] = "\0";
     char commandTopic[128] = "\0";
-    // TODO: name for MQTT client
+    // name for MQTT client
+    const char * clientNamePrefix = "esp_dimmer_";
+    char mqttClientName[20] = "\0";
     
     // config message snippets (send one per channel)
     const char * configMsgPart1 = "{\"uniq_id\":\"esp_dimmer_";
@@ -72,7 +74,7 @@ class Messagehandler{
     // constructor
     Messagehandler();
     
-    // get mac address to use as part of the device name
+    // get mac address to use as part of the device name (and set client name)
     void getMacAddress();
     
     // create and send autodiscovery message for given number of channels (plus the sum channel "0")
@@ -83,6 +85,9 @@ class Messagehandler{
     
     // parse command message and extract commands from it
     static void parseMessage(char* topic, byte* payload, unsigned int length);
+
+    // return client name for use externally
+    char * getClientName();
 
     // TODO: upgrade autodiscovery to announce individually controllable channels
 
