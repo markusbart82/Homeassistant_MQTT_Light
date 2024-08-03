@@ -69,6 +69,25 @@ class Messagehandler{
     // chInfix goes here
     // channel number goes here
     const char * configMsgPart7 = "/set\"";
+
+    enum effect_t {
+      none = 0,
+      colorwheel = 1,
+      undulation = 2
+    };
+
+    // buffer for last received message (to get info from using separate APIs)
+    // TODO: make all access to this buffer interrupt-locked
+    uint8_t bufferChannelNumber = 0; // channel number this message is for
+    uint8_t bufferR = 0; // red
+    uint8_t bufferG = 0; // green
+    uint8_t bufferB = 0; // blue
+    uint16_t bufferCT = 0; // color temperature [mireds]
+    uint8_t bufferBrightness = 0; // brightness
+    uint8_t bufferFlashTime = 0; // time for flashing target color
+    uint8_t bufferTransitionTime = 0; // time for transition to target color
+    effect_t bufferEffect = none;
+    bool bufferState = false; // on/off state, stored as true/false
   
   public:
     // constructor
@@ -88,7 +107,9 @@ class Messagehandler{
     void sendStateMessage(PubSubClient client, uint8 channelNumber, uint8 r, uint8 g, uint8 b, uint8 ct, effect_t fx);
     
     // parse command message and extract commands from it
-    static void parseMessage(char* topic, byte* payload, unsigned int length);
+    void parseMessage(char* topic, byte* payload, unsigned int length);
+
+    // TODO: APIs to get information from last (buffered) message - must be called with locked interrupts to ensure data consistency
 
     // return client name for use externally
     char * getClientName();

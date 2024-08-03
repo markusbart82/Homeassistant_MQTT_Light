@@ -127,8 +127,86 @@ void Messagehandler::sendStateMessage(PubSubClient client, uint8 channelNumber, 
 }
 
 // parse command message and extract commands from it
+// TODO: read channel number from topic, write it into buffer
+// TODO: callouts for data processing
 void Messagehandler::parseMessage(char* topic, byte* payload, unsigned int length){
   // TODO: do some implementation here
+  StaticJsonDocument<128> message;
+  DeserializationError error = deserializeJson(message, payload);
+  if(error){
+#if(NODE_DEBUG == true)
+    Serial.println(error.f_str());
+#endif
+  }else{
+    noInterrupts();
+
+    // flash [seconds]: time the lamp is supposed to flash in the chosen color before returning to previous color
+    JsonVariant flash = message["flash"];
+    if(!flash.isNull()){
+      this->bufferFlashTime = flash.as<int>();
+      this->bufferEffect = none;
+    }
+    
+    // transition [seconds]: time the lamp should take to transition to target color
+    JsonVariant transition = message["transition"];
+    if(!transition.isNull()){
+      this->bufferTransitionTime = transition.as<int>();
+      this->bufferEffect = none;
+    }
+    
+    // effect
+    JsonVariant effect = message["effect"];
+    if(!effect.isNull()){
+      // explicit comparison instead of implicit cast on assignment to avoid illegal values
+      if(effect == "none"){
+        this->bufferEffect = none;
+      }else if(effect == "colorwheel"){
+        this->bufferEffect = colorwheel;
+      }else if(effect == "undulation"){
+        this->bufferEffect = undulation;
+      }
+    }
+    
+    // brightness [0..255]
+    JsonVariant brightness = message["brightness"];
+    if(!brightness.isNull()){
+      this->bufferBrightness = brightness.as<int>();
+      this->bufferEffect = none;
+    }
+    
+    // colors [0..255]
+    JsonVariant red = message["color"]["r"];
+    if(!red.isNull()){
+      this->bufferR = red;
+      this->bufferEffect = none;
+    }
+    JsonVariant green = message["color"]["g"];
+    if(!green.isNull()){
+      this->bufferG = green;
+      this->bufferEffect = none;
+    }
+    JsonVariant blue = message["color"]["b"];
+    if(!blue.isNull()){
+      this->bufferB = blue;
+      this->bufferEffect = none;
+    }
+    
+    // color temperature [mireds]
+    JsonVariant colorTemp = message["color_temp"];
+    if(!colorTemp.isNull()){
+      this->bufferCT = colorTemp;
+      this->bufferEffect = none;
+    }
+
+    // state [ON|OFF]
+    JsonVariant state = message["state"];
+    if(!state.isNull()){
+      this->bufferState = (strcmp(state,"ON")==0);
+      // effect is not changed here
+    }
+
+    interrupts();
+  }
 }
 
 // return client name for use externally
