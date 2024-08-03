@@ -23,6 +23,22 @@ Messagehandler messagehandler;
 WiFiClient wifiClient;
 PubSubClient pubSubClient(wifiClient);
 
+// this function is the entry point for received messages
+void receiveMessage(char* topic, byte* payload, unsigned int length) {
+  noInterrupts();
+  // call messagehandler to parse the message
+  messagehandler.parseMessage(topic, payload, length);
+
+  // TODO: update channel(s) with data from the parsed message
+  // check on/off state
+  // check effect
+  // check flashing
+  // check transition
+  // check brightness
+  // check RGB
+  interrupts();
+}
+
 void setup() {
   // configure pins
   pinMode(SCL_PIN, OUTPUT);
@@ -82,19 +98,3 @@ void loop() {
   // TODO: do other repeating stuff
 }
 
-
-// this function is the entry point for received messages
-void receiveMessage(char* topic, byte* payload, unsigned int length) {
-  noInterrupts();
-  // call messagehandler to parse the message
-  messagehandler.parseMessage(topic, payload, length);
-
-  // TODO: update channel(s) with data from the parsed message
-  // check on/off state
-  // check effect
-  // check flashing
-  // check transition
-  // check brightness
-  // check RGB
-  interrupts();
-}
