@@ -76,6 +76,11 @@ bool Channel::isUpdated(){
   }
 }
 
+// manually request update (set the updated flag)
+void Channel::requestUpdate(){
+  this->updated = true;
+}
+
 // do one step of dimming, called every 20ms
 void Channel::dimStep(){
   // dim one step further (20ms)

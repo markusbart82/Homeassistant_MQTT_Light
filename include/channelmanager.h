@@ -33,6 +33,9 @@ class Channelmanager{
     
     // get a controller to interact with
     Controller* getController(uint8_t controllerNumber);
+
+    // request update from all channels (during initialization)
+    void requestUpdate();
         
 };
 

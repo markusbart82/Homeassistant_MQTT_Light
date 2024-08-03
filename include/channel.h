@@ -79,6 +79,9 @@ class Channel{
     
     // reads and clears the updated flag (for checking whether new data has to be sent to controller)
     bool isUpdated();
+
+    // manually request update (set the updated flag)
+    void requestUpdate();
     
   private:
     // do one step of dimming, called every 20ms

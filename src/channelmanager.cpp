@@ -51,3 +51,10 @@ Channel* Channelmanager::getChannel(uint8_t channelNumber){
 Controller* Channelmanager::getController(uint8_t controllerNumber){
   return controllers[controllerNumber];
 }
+
+// request update from all channels (during initialization)
+void Channelmanager::requestUpdate(){
+  for(uint8_t channelIterator = 0; channelIterator < this->numberOfChannels; channelIterator++){
+    channels[channelIterator]->requestUpdate();
+  }
+}

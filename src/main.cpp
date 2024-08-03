@@ -90,7 +90,8 @@ void loop() {
     }
     // send discovery message and subscribe to command topics
     messagehandler.sendAutoDiscoveryMessage(pubSubClient, 3); // TODO: make this dynamic - for now, it's 3 static channels
-    // TODO: send initial state topic (set all channels to "needs update" and let the loop do the rest)
+    // request update for all channels, the next loop will send current states of all channels to the controller(s)
+    channelmanager.requestUpdate();
   }
 
   // update channels, do all the dimming etc. and send commands to physical controllers
