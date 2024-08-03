@@ -29,7 +29,17 @@ void Channelmanager::loop(){
       if(channels[channelIterator]->isUpdated()){updateNeeded = true;}
     }
     if(updateNeeded){
-      // TODO: trigger data update if the current controller has a channel with updates
+      // trigger data update if the current controller has a channel with updates
+      uint16_t values[15] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+      uint8_t channelOnThisControllerIterator = 0;
+      for(uint8_t channelIterator = controllerIterator * 3; channelIterator < ((controllerIterator+1) * 3) && (channelIterator < this->numberOfChannels); channelIterator++){
+        // aggregate info from each channel
+        uint8_t off = channelOnThisControllerIterator * 5; // offset into values array
+        channels[channelIterator]->getCurrentColors(values[0+off], values[1+off], values[2+off], values[3+off], values[4+off]); // update values array for one channel
+        channelOnThisControllerIterator++;
+      }
+      // send update to controller
+      controllers[controllerIterator]->updateOutputs(15, values);
     }
   }
 }
