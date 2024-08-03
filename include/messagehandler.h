@@ -73,11 +73,15 @@ class Messagehandler{
   public:
     // constructor
     Messagehandler();
+
+    // initialization of internal structures
+    void init();
     
     // get mac address to use as part of the device name (and set client name)
     void getMacAddress();
     
-    // create and send autodiscovery message for given number of channels (plus the sum channel "0")
+    // create and send autodiscovery message for given number of channels (plus the sum channel "0") and subscribe to command topics
+    // TODO: upgrade autodiscovery to announce individually controllable channels
     void sendAutoDiscoveryMessage(PubSubClient client, uint8 numberOfChannels);
     
     // create and send state message for one channel (RGB + colortemp)
@@ -88,8 +92,6 @@ class Messagehandler{
 
     // return client name for use externally
     char * getClientName();
-
-    // TODO: upgrade autodiscovery to announce individually controllable channels
 
 };
 

@@ -18,7 +18,7 @@
 #define SCL_PIN 5
 #define SDA_PIN 4
 
-Channelmanager channelmanager(3);
+Channelmanager channelmanager(3); // TODO: make this dynamic - for now, it's 3 static channels
 Messagehandler messagehandler;
 WiFiClient wifiClient;
 PubSubClient pubSubClient(wifiClient);
@@ -71,10 +71,9 @@ void loop() {
       pubSubClient.connect(messagehandler.getClientName(), MQTT_USER,MQTT_PASS);
       delay(100);
     }
-    // send discovery message
+    // send discovery message and subscribe to command topics
     messagehandler.sendAutoDiscoveryMessage(pubSubClient, 3); // TODO: make this dynamic - for now, it's 3 static channels
     // TODO: send initial state topic
-    // TODO: subscribe to command topic
   }
 
   // update channels, do all the dimming etc. and send commands to physical controllers

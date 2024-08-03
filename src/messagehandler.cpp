@@ -6,6 +6,11 @@
 Messagehandler::Messagehandler(){
 }
 
+// initialization of internal structures
+void Messagehandler::init(){
+  // TODO: init topics and store them locally (only copy once) 
+}
+
 // get mac address to use as part of the device name (and set client name)
 void Messagehandler::getMacAddress(){
   // this stupid mac address trickery seems to be necessary because there seems to be no working conversion between unsigned char[] and char[]
@@ -19,7 +24,7 @@ void Messagehandler::getMacAddress(){
   strcat(mqttClientName, macAddressUid);
 }
 
-// create and send autodiscovery message for given number of channels (plus the sum channel "0")
+// create and send autodiscovery message for given number of channels (plus the sum channel "0") and subscribe to command topics
 void Messagehandler::sendAutoDiscoveryMessage(PubSubClient client, uint8 numberOfChannels){
   // loop over all channels, send an autodiscovery message for each one
   for(uint8 channelNumber = 0; channelNumber <= numberOfChannels; channelNumber++){
@@ -111,6 +116,7 @@ void Messagehandler::sendStateMessage(PubSubClient client, uint8 channelNumber, 
   // get channel number as a char array
   itoa(channelNumber, chNum, 10);
   // assemble state topic
+  // TODO: this should only be done once. Efficiency.
   strcpy(stateTopic, topicPrefix);
   strcat(stateTopic, macAddressUid);
   strcat(stateTopic, chInfix);
