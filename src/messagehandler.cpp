@@ -128,7 +128,7 @@ void Messagehandler::sendStateMessage(PubSubClient client, uint8 channelNumber, 
 // parse command message and extract commands from it
 // must be called with locked interrupts
 void Messagehandler::parseMessage(char* topic, byte* payload, unsigned int length){
-  StaticJsonDocument<128> message;
+  JsonDocument message;
   DeserializationError error = deserializeJson(message, payload);
   if(error){
 #if(NODE_DEBUG == true)
@@ -138,7 +138,7 @@ void Messagehandler::parseMessage(char* topic, byte* payload, unsigned int lengt
 
     // read channelNumber from topic
     // TODO: verify this actually works
-    const std::regex channel_regex("_ch([0-9]+)\/");
+    const std::regex channel_regex("_ch([0-9]+)/");
     std::cmatch match;
     std::regex_search(topic, match, channel_regex);
     this->bufferChannelNumber = atoi(match[0].str().c_str());
