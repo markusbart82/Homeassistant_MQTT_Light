@@ -9,7 +9,6 @@ Messagehandler::Messagehandler(){
 
 // initialization of internal structures
 void Messagehandler::init(){
-  // TODO: init topics and store them locally (only copy once) 
 }
 
 // get mac address to use as part of the device name (and set client name)
@@ -117,7 +116,6 @@ void Messagehandler::sendStateMessage(PubSubClient client, uint8 channelNumber, 
   // get channel number as a char array
   itoa(channelNumber, chNum, 10);
   // assemble state topic
-  // TODO: this should only be done once. Efficiency.
   strcpy(stateTopic, topicPrefix);
   strcat(stateTopic, macAddressUid);
   strcat(stateTopic, chInfix);

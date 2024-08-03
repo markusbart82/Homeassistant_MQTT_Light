@@ -77,7 +77,6 @@ class Messagehandler{
     };
 
     // buffer for last received message (to get info from using separate APIs)
-    // TODO: make all access to this buffer interrupt-locked
     uint8_t bufferChannelNumber = 0; // channel number this message is for
     uint8_t bufferR = 0; // red
     uint8_t bufferG = 0; // green

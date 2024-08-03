@@ -62,6 +62,7 @@ void setup() {
 
   // read mac address from wifi for unique names
   messagehandler.getMacAddress();
+  messagehandler.init();
 
   // configure MQTT broker
   pubSubClient.setServer(MQTT_BROKER, 1883);
@@ -89,7 +90,7 @@ void loop() {
     }
     // send discovery message and subscribe to command topics
     messagehandler.sendAutoDiscoveryMessage(pubSubClient, 3); // TODO: make this dynamic - for now, it's 3 static channels
-    // TODO: send initial state topic
+    // TODO: send initial state topic (set all channels to "needs update" and let the loop do the rest)
   }
 
   // update channels, do all the dimming etc. and send commands to physical controllers
