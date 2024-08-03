@@ -100,7 +100,6 @@ class Messagehandler{
     void getMacAddress();
     
     // create and send autodiscovery message for given number of channels (plus the sum channel "0") and subscribe to command topics
-    // TODO: upgrade autodiscovery to announce individually controllable channels
     void sendAutoDiscoveryMessage(PubSubClient client, uint8 numberOfChannels);
     
     // create and send state message for one channel (RGB + colortemp)

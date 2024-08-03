@@ -130,7 +130,6 @@ void Messagehandler::sendStateMessage(PubSubClient client, uint8 channelNumber, 
 // must be called with locked interrupts
 // TODO: read channel number from topic, write it into buffer
 void Messagehandler::parseMessage(char* topic, byte* payload, unsigned int length){
-  // TODO: do some implementation here
   StaticJsonDocument<128> message;
   DeserializationError error = deserializeJson(message, payload);
   if(error){
