@@ -127,8 +127,8 @@ void Messagehandler::sendStateMessage(PubSubClient client, uint8 channelNumber, 
 }
 
 // parse command message and extract commands from it
+// must be called with locked interrupts
 // TODO: read channel number from topic, write it into buffer
-// TODO: callouts for data processing
 void Messagehandler::parseMessage(char* topic, byte* payload, unsigned int length){
   // TODO: do some implementation here
   StaticJsonDocument<128> message;
@@ -138,7 +138,6 @@ void Messagehandler::parseMessage(char* topic, byte* payload, unsigned int lengt
     Serial.println(error.f_str());
 #endif
   }else{
-    noInterrupts();
 
     // flash [seconds]: time the lamp is supposed to flash in the chosen color before returning to previous color
     JsonVariant flash = message["flash"];
@@ -205,9 +204,50 @@ void Messagehandler::parseMessage(char* topic, byte* payload, unsigned int lengt
       // effect is not changed here
     }
 
-    interrupts();
   }
 }
+
+// APIs to get information from last (buffered) message - must be called with locked interrupts to ensure data consistency
+bool Messagehandler::getState(){
+  return this->bufferState;
+}
+
+uint8_t Messagehandler::getChannelNumber(){
+  return this->bufferChannelNumber;
+}
+
+Messagehandler::effect_t Messagehandler::getEffect(){
+  return this->bufferEffect;
+}
+
+uint8_t Messagehandler::getFlashTime(){
+  return this->bufferFlashTime;
+}
+
+uint8_t Messagehandler::getTransitionTime(){
+  return this->bufferTransitionTime;
+}
+
+uint8_t Messagehandler::getBrightness(){
+  return this->bufferBrightness;
+}
+
+uint16_t Messagehandler::getColortemp(){
+  return this->bufferCT;
+}
+
+uint8_t Messagehandler::getRed(){
+  return this->bufferR;
+}
+
+uint8_t Messagehandler::getGreen(){
+  return this->bufferG;
+}
+
+uint8_t Messagehandler::getBlue(){
+  return this->bufferB;
+}
+
 
 // return client name for use externally
 char * Messagehandler::getClientName(){

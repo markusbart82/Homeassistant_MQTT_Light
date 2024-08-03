@@ -107,9 +107,20 @@ class Messagehandler{
     void sendStateMessage(PubSubClient client, uint8 channelNumber, uint8 r, uint8 g, uint8 b, uint8 ct, effect_t fx);
     
     // parse command message and extract commands from it
+    // must be called with locked interrupts
     void parseMessage(char* topic, byte* payload, unsigned int length);
 
-    // TODO: APIs to get information from last (buffered) message - must be called with locked interrupts to ensure data consistency
+    // APIs to get information from last (buffered) message - must be called with locked interrupts to ensure data consistency
+    bool getState();
+    uint8_t getChannelNumber();
+    Messagehandler::effect_t getEffect();
+    uint8_t getFlashTime();
+    uint8_t getTransitionTime();
+    uint8_t getBrightness();
+    uint16_t getColortemp();
+    uint8_t getRed();
+    uint8_t getGreen();
+    uint8_t getBlue();
 
     // return client name for use externally
     char * getClientName();
