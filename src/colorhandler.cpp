@@ -2,14 +2,14 @@
 
 #include "colorhandler.h"
 
-uint16_t kelvinToMireds(uint16_t kelvin){
+uint16_t Colorhandler::kelvinToMireds(uint16_t kelvin){
   uint16_t kelvin_int = kelvin;
   if(kelvin_int < WW_TEMP){kelvin_int = WW_TEMP;}
   if(kelvin_int > CW_TEMP){kelvin_int = CW_TEMP;}
   return (1000000/kelvin);
 }
 
-uint16_t miredsToKelvin(uint16_t mireds){
+uint16_t Colorhandler::miredsToKelvin(uint16_t mireds){
   uint16_t kelvin = 1000000/mireds;
   if(kelvin < WW_TEMP){kelvin = WW_TEMP;}
   if(kelvin > CW_TEMP){kelvin = CW_TEMP;}
