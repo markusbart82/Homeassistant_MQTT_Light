@@ -9,6 +9,7 @@
 #include "colorhandler.h"
 #include "messagehandler.h"
 #include "controller.h"
+#include "types.h"
 
 
 // output enable (low = enabled)
@@ -25,18 +26,99 @@ PubSubClient pubSubClient(wifiClient);
 
 // this function is the entry point for received messages
 void receiveMessage(char* topic, byte* payload, unsigned int length) {
+
+  /* HomeAssistant will send these messages to the lamp using the UI:
+   * OFF
+   * ON
+   * ON brightness
+   * ON colortemp
+   * ON RGB
+   * ON effect
+   * 
+   * HomeAssistant will send these messages to the lamp using scripts:
+   * ON brightness colortemp
+   * ON transition
+   * OFF transition
+   * ON transition brightness
+   * ON transition colortemp
+   * ON transition brightness colortemp
+   * ON flash RGB
+   * ON flash brightness
+   * ON flash colortemp
+   * ON flash brightness colortemp
+   * 
+   * HomeAssistant will NOT send these messages:
+   * OFF colortemp
+   * ON brightness=0 colortemp
+   * 
+   * This lamp will use this message format to change the colortemp without turning on the lamp:
+   * ON brightness=1 colortemp
+   * And after the call, it reports back "OFF"
+   */
+
   noInterrupts();
   // call messagehandler to parse the message
   messagehandler.parseMessage(topic, payload, length);
 
-  // TODO: update channel(s) with data from the parsed message
+  // update channel(s) with data from the parsed message
+  Channel* channel = channelmanager.getChannel(messagehandler.getChannelNumber());
   // check on/off state
-  // check effect
-  // check flashing
-  // check transition
-  // check brightness
-  // check RGB
+  if(messagehandler.getState()){
+    // state is "ON"
+
+    if(messagehandler.getEffect() != none){
+      
+      // if an effect is selected, use that
+      channel->setEffect(messagehandler.getEffect());
+      return; // no further processing, effects speak for themselves
+
+    }else{
+      
+      // if no effect is selected, disable effects and proceed
+      channel->setEffect(none);
+
+      // if color temperature is included, update the stored value
+      if(messagehandler.getColortemp()!=UINT16_MAX){
+        channel->setColorTemp(messagehandler.getColortemp());
+      }
+
+      // calculate colors to use for dim/flash
+      uint16_t r = 0;
+      uint16_t g = 0;
+      uint16_t b = 0;
+      uint16_t ww = 0;
+      uint16_t cw = 0;
+      if(messagehandler.getBrightness()>0){
+        // brightness is part of the message, go for uncolored mode
+        if(messagehandler.getBrightness()==1){
+          // special message to update color temperature and change nothing in the actual light
+          return; // do nothing, no changes to the light, just update the color temperature
+        }else{
+          // brightness >1, use it for RGB with stored color temperature
+          uint8_t brightness = messagehandler.getBrightness();
+          Colorhandler::rgb8ToRgbww12(brightness, brightness, brightness, channel->getColorTemp(), r, g, b, ww, cw);
+        }
+      }else if(messagehandler.getRed()>0 || messagehandler.getGreen()>0 || messagehandler.getBlue()>0){
+        // RGB is set, use it with stored color temperature
+        Colorhandler::rgb8ToRgbww12(messagehandler.getRed(), messagehandler.getGreen(), messagehandler.getBlue(), channel->getColorTemp(), r, g, b, ww, cw);
+      }
+
+      // dim or flash the lamp accordingly
+      if(messagehandler.getFlashTime()>0){
+        // flashing
+        channel->flashColor(r, g, b, ww, cw, messagehandler.getFlashTime());
+      }else{
+        // dimming
+        channel->dimToColor(r, g, b, ww, cw, messagehandler.getTransitionTime());
+      }
+    }
+  }else{
+    // state is "OFF"
+    // turn off the lamp
+    channel->dimToColor(0, 0, 0, 0, 0, messagehandler.getTransitionTime());
+  }
   interrupts();
+  // TODO: the lamp should return its current state to the HomeAssistant server
 }
 
 void setup() {

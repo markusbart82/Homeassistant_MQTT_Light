@@ -16,6 +16,9 @@ In addition, this lamp supports tuneable white, so mixing warm white and cold wh
 * RGB(255,128,0),TEMP(255) --> RGBWC(255,128,0,0,0)
 * RGB(255,192,128),TEMP(64) --> RGBWC(128,64,0,192,64)
 
+# Invisible color temperature updates
+Most smart lamps only let you update the color temperature while they are on. So they turn on with the previous color temperature and then dim to the right one. To combat this behavior, send a message with brightness=1 and the desired color temperature to do an invisible update. The lamp will remain in its previous state (OFF, that is). Such low brightness values usually are not showing in most lamps, either.
+
 # Homeassistant integration
 The lamp supports autodiscovery and identifies as "ESP-dimmer-NUMBER", where the number is derived from the MAC address. Supported features:
 * JSON schema
