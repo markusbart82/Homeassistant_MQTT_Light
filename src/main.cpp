@@ -60,8 +60,17 @@ void receiveMessage(char* topic, byte* payload, unsigned int length) {
   // call messagehandler to parse the message
   messagehandler.parseMessage(topic, payload, length);
 
+  // temporary values for updating the channel
+  uint16_t r = 0;
+  uint16_t g = 0;
+  uint16_t b = 0;
+  uint16_t ww = 0;
+  uint16_t cw = 0;
+  uint8_t channelNumber = messagehandler.getChannelNumber();
+  boolean writeUpdate = true; // set this variable to false if an update is not required
+
   // update channel(s) with data from the parsed message
-  Channel* channel = channelmanager.getChannel(messagehandler.getChannelNumber());
+  Channel* channel = channelmanager.getChannel(channelNumber);
   // check on/off state
   if(messagehandler.getState()){
     // state is "ON"
@@ -70,7 +79,6 @@ void receiveMessage(char* topic, byte* payload, unsigned int length) {
       
       // if an effect is selected, use that
       channel->setEffect(messagehandler.getEffect());
-      return; // no further processing, effects speak for themselves
 
     }else{
       
@@ -83,16 +91,11 @@ void receiveMessage(char* topic, byte* payload, unsigned int length) {
       }
 
       // calculate colors to use for dim/flash
-      uint16_t r = 0;
-      uint16_t g = 0;
-      uint16_t b = 0;
-      uint16_t ww = 0;
-      uint16_t cw = 0;
       if(messagehandler.getBrightness()>0){
         // brightness is part of the message, go for uncolored mode
         if(messagehandler.getBrightness()==1){
           // special message to update color temperature and change nothing in the actual light
-          return; // do nothing, no changes to the light, just update the color temperature
+          writeUpdate = false; // do nothing, no changes to the light, just update the color temperature
         }else{
           // brightness >1, use it for RGB with stored color temperature
           uint8_t brightness = messagehandler.getBrightness();
@@ -104,12 +107,14 @@ void receiveMessage(char* topic, byte* payload, unsigned int length) {
       }
 
       // dim or flash the lamp accordingly
-      if(messagehandler.getFlashTime()>0){
-        // flashing
-        channel->flashColor(r, g, b, ww, cw, messagehandler.getFlashTime());
-      }else{
-        // dimming
-        channel->dimToColor(r, g, b, ww, cw, messagehandler.getTransitionTime());
+      if(writeUpdate){ // skip the update for the invisible colortemp update
+        if(messagehandler.getFlashTime()>0){
+          // flashing
+          channel->flashColor(r, g, b, ww, cw, messagehandler.getFlashTime());
+        }else{
+          // dimming
+          channel->dimToColor(r, g, b, ww, cw, messagehandler.getTransitionTime());
+        }
       }
     }
   }else{
@@ -117,8 +122,11 @@ void receiveMessage(char* topic, byte* payload, unsigned int length) {
     // turn off the lamp
     channel->dimToColor(0, 0, 0, 0, 0, messagehandler.getTransitionTime());
   }
+
+  // send state message back to HomeAssistant server
+  messagehandler.sendStateMessage(pubSubClient, channelNumber, r, g, b, channel->getColorTemp(), messagehandler.getEffect());
+  
   interrupts();
-  // TODO: the lamp should return its current state to the HomeAssistant server
 }
 
 void setup() {
