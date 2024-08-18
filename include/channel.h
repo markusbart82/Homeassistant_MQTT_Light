@@ -2,13 +2,7 @@
 #define CHANNEL_H
 
 #include <Arduino.h>
-
-enum effect_t {
-  none = 0,
-  colorwheel = 1,
-  undulation = 2
-};
-
+#include "types.h"
 
 class Channel{
 
@@ -58,6 +52,10 @@ class Channel{
     // effects
     volatile effect_t fx = none;
 
+    // color temperature for invisible updates and turning on with the right colors
+    // this value is written with every change and can be extracted on demand
+    volatile uint16_t colorTemp = 235; // init value: 235 mireds / 4250 kelvin
+
   public:
     // constructor
     Channel();
@@ -76,6 +74,12 @@ class Channel{
     
     // get updated colors
     void getCurrentColors(uint16_t &r, uint16_t &g, uint16_t &b, uint16_t &ww, uint16_t &cw);
+
+    // store color temperature (not directly used, just for reference as input value)
+    void setColorTemp(uint16_t colorTemp);
+    
+    // get stored color temperature
+    uint16_t getColorTemp();
     
     // reads and clears the updated flag (for checking whether new data has to be sent to controller)
     bool isUpdated();

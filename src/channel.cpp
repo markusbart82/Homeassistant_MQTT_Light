@@ -67,6 +67,16 @@ void Channel::getCurrentColors(uint16_t &r, uint16_t &g, uint16_t &b, uint16_t &
   cw = this->currentCW;
 }
 
+// store color temperature (not directly used, just for reference as input value)
+void Channel::setColorTemp(uint16_t colorTemp){
+  this->colorTemp = colorTemp;
+}
+
+// get stored color temperature
+uint16_t Channel::getColorTemp(){
+  return this->colorTemp;
+}
+
 bool Channel::isUpdated(){
   if(this->updated){
     this->updated = false;

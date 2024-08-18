@@ -135,6 +135,16 @@ void Messagehandler::parseMessage(char* topic, byte* payload, unsigned int lengt
     Serial.println(error.f_str());
 #endif
   }else{
+    // initialize values
+    this->bufferR = 0;
+    this->bufferG = 0;
+    this->bufferB = 0;
+    this->bufferBrightness = 0;
+    this->bufferCT = UINT16_MAX;
+    this->bufferFlashTime = 0;
+    this->bufferTransitionTime = 200; // default transition time
+    this->bufferEffect = none;
+    this->bufferState = false;
 
     // read channelNumber from topic
     // TODO: verify this actually works
@@ -167,13 +177,20 @@ void Messagehandler::parseMessage(char* topic, byte* payload, unsigned int lengt
         this->bufferEffect = colorwheel;
       }else if(effect == "undulation"){
         this->bufferEffect = undulation;
+      }else{
+        this->bufferEffect = none;
       }
     }
     
     // brightness [0..255]
     JsonVariant brightness = message["brightness"];
     if(!brightness.isNull()){
+      // set brightness
       this->bufferBrightness = brightness.as<int>();
+      // also set individual color values so they have valid values
+      this->bufferR = brightness.as<int>();
+      this->bufferG = brightness.as<int>();
+      this->bufferB = brightness.as<int>();
       this->bufferEffect = none;
     }
     
@@ -220,7 +237,7 @@ uint8_t Messagehandler::getChannelNumber(){
   return this->bufferChannelNumber;
 }
 
-Messagehandler::effect_t Messagehandler::getEffect(){
+effect_t Messagehandler::getEffect(){
   return this->bufferEffect;
 }
 

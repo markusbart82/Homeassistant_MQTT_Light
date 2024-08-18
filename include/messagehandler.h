@@ -7,6 +7,7 @@
 #include "ArduinoJson.h"
 #include "colorhandler.h"
 #include "channel.h"
+#include "types.h"
 
 class Messagehandler{
 
@@ -70,12 +71,6 @@ class Messagehandler{
     // channel number goes here
     const char * configMsgPart7 = "/set\"";
 
-    enum effect_t {
-      none = 0,
-      colorwheel = 1,
-      undulation = 2
-    };
-
     // buffer for last received message (to get info from using separate APIs)
     uint8_t bufferChannelNumber = 0; // channel number this message is for
     uint8_t bufferR = 0; // red
@@ -111,7 +106,7 @@ class Messagehandler{
     // APIs to get information from last (buffered) message - must be called with locked interrupts to ensure data consistency
     bool getState();
     uint8_t getChannelNumber();
-    Messagehandler::effect_t getEffect();
+    effect_t getEffect();
     uint8_t getFlashTime();
     uint8_t getTransitionTime();
     uint8_t getBrightness();
