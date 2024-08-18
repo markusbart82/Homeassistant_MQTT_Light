@@ -25,9 +25,9 @@ void Messagehandler::getMacAddress(){
 }
 
 // create and send autodiscovery message for given number of channels (plus the sum channel "0") and subscribe to command topics
-void Messagehandler::sendAutoDiscoveryMessage(PubSubClient client, uint8 numberOfChannels){
+void Messagehandler::sendAutoDiscoveryMessage(PubSubClient client, uint8_t numberOfChannels){
   // loop over all channels, send an autodiscovery message for each one
-  for(uint8 channelNumber = 0; channelNumber <= numberOfChannels; channelNumber++){
+  for(uint8_t channelNumber = 0; channelNumber <= numberOfChannels; channelNumber++){
     // get channel number as a char array
     itoa(channelNumber, chNum, 10);
     // assemble config topic
@@ -53,7 +53,7 @@ void Messagehandler::sendAutoDiscoveryMessage(PubSubClient client, uint8 numberO
     configMessageLength += strlen(configMsgPart7);
     configMessageLength += (6 * strlen(macAddressUid)); // mac address is in the message 6 times
     configMessageLength += (4 * strlen(chInfix)); // channel infix is in the message 4 times
-    configMessageLength += 4; // channel number (uint8) is in the message 4 times
+    configMessageLength += 4; // channel number (uint8_t) is in the message 4 times
     client.beginPublish(configTopic, configMessageLength, true);
     client.write((const unsigned char*) configMsgPart1, strlen(configMsgPart1));
     client.write((const unsigned char*) macAddressUid, strlen(macAddressUid));
@@ -83,7 +83,7 @@ void Messagehandler::sendAutoDiscoveryMessage(PubSubClient client, uint8 numberO
 }
 
 // create and send state message for one channel (RGB + colortemp)
-void Messagehandler::sendStateMessage(PubSubClient client, uint8 channelNumber, uint8 r, uint8 g, uint8 b, uint8 ct, effect_t fx){
+void Messagehandler::sendStateMessage(PubSubClient client, uint8_t channelNumber, uint8_t r, uint8_t g, uint8_t b, uint8_t ct, effect_t fx){
   JsonDocument message;
   if(r==0 && g==0 && b==0){
     message["state"] = "OFF";

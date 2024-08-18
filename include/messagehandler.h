@@ -94,10 +94,10 @@ class Messagehandler{
     void getMacAddress();
     
     // create and send autodiscovery message for given number of channels (plus the sum channel "0") and subscribe to command topics
-    void sendAutoDiscoveryMessage(PubSubClient client, uint8 numberOfChannels);
+    void sendAutoDiscoveryMessage(PubSubClient client, uint8_t numberOfChannels);
     
     // create and send state message for one channel (RGB + colortemp)
-    void sendStateMessage(PubSubClient client, uint8 channelNumber, uint8 r, uint8 g, uint8 b, uint8 ct, effect_t fx);
+    void sendStateMessage(PubSubClient client, uint8_t channelNumber, uint8_t r, uint8_t g, uint8_t b, uint8_t ct, effect_t fx);
     
     // parse command message and extract commands from it
     // must be called with locked interrupts
