@@ -58,7 +58,7 @@ void receiveMessage(char* topic, byte* payload, unsigned int length) {
    */
 
   //TODO: move all of the following into the main loop, inside messageHandler.parseMessage, and have a buffer for the received values
-  
+   
   // call messagehandler to parse the message
   messagehandler.parseMessage(topic, payload, length);
 
@@ -196,36 +196,31 @@ void setup() {
 
 
 void loop() {
-  // make sure we only communicate with active WIFI
+  // WiFi reconnection (non-blocking, single attempt per iteration)
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("Reconnecting to WIFI");
     WiFi.begin(SSID, PSK);
-    while (WiFi.status() != WL_CONNECTED) {
-      delay(100);
-    }
-    Serial.println("WIFI connection established");
+    Serial.println("Reconnecting to WIFI");
   }
-  // make sure we only communicate with an active MQTT connection
+
+  // MQTT reconnection (non-blocking, single connect() call per iteration)
   if (!pubSubClient.connected()) {
-    Serial.println("Connecting to MQTT");
-    while (!pubSubClient.connected()) {
-      pubSubClient.connect(messagehandler.getClientName(), MQTT_USER,MQTT_PASS);
-      delay(100);
+    if (pubSubClient.connect(messagehandler.getClientName(), MQTT_USER, MQTT_PASS)) {
+      Serial.println("MQTT connection established");
+      Serial.println("Sending auto discovery message to Home Assistant");
+      messagehandler.sendAutoDiscoveryMessage(pubSubClient, 3u); // TODO: make this dynamic - for now, it's 3 static channels
+      channelmanager.requestUpdate();
+      Serial.println("Home Assistant configured");
+    } else {
+      Serial.println("MQTT connection failed");
     }
-    Serial.println("MQTT connection established");
-    Serial.println("Sending auto discovery message to Home Assistant");
-    // send discovery message and subscribe to command topics
-    messagehandler.sendAutoDiscoveryMessage(pubSubClient, 3u); // TODO: make this dynamic - for now, it's 3 static channels
-    // request update for all channels, the next loop will send current states of all channels to the controller(s)
-    channelmanager.requestUpdate();
-    Serial.println("Home Assistant configured");
   }
 
-  // update channels, do all the dimming etc. and send commands to physical controllers
-  channelmanager.loop();
+  // Execute connection-dependent code only when both WiFi and MQTT are connected
+  if (WiFi.status() == WL_CONNECTED && pubSubClient.connected()) {
+    // update channels, do all the dimming etc. and send commands to physical controllers
+    channelmanager.loop();
 
-  // parse incoming messages for MQTT
-  pubSubClient.loop();
-
-  // TODO: do other repeating stuff
+    // parse incoming messages for MQTT
+    pubSubClient.loop();
+  }
 }
