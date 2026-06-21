@@ -7,22 +7,28 @@ Channel::Channel(){
 }
 
 // loop function that does all the repeating/timing stuff
+// called every 20ms by channelmanager
 void Channel::loop(){
-  int now = millis();
-  // overflow handling
-  if(now - lastNow < 0){lastNow = now;}
-  // act every 20ms
-  if(now - lastNow > 20){
-    lastNow = now;
-    
-    // do all the timing steps
-    if(dimTime > 0){dimStep();}
-    if(flashTime > 0){flashStep();}
-  }
+  // do all the timing steps
+  if(dimTime > 0){dimStep();}
+  if(flashTime > 0){flashStep();}
 }
 
 // set new target color to dim to, and time (in ms) to do so
 void Channel::dimToColor(uint16_t r, uint16_t g, uint16_t b, uint16_t ww, uint16_t cw, uint16_t time){
+  Serial.print("dimToColor(");
+  Serial.print(r);
+  Serial.print(", ");
+  Serial.print(g);
+  Serial.print(", ");
+  Serial.print(b);
+  Serial.print(", ");
+  Serial.print(ww);
+  Serial.print(", ");
+  Serial.print(cw);
+  Serial.print(", ");
+  Serial.print(time);
+  Serial.println(")");
   // set current values as previous to initiate new dimming cycle
   this->previousR = this->currentR;
   this->previousG = this->currentG;
@@ -42,6 +48,19 @@ void Channel::dimToColor(uint16_t r, uint16_t g, uint16_t b, uint16_t ww, uint16
 
 // set color to flash, and time (in ms) to flash it for
 void Channel::flashColor(uint16_t r, uint16_t g, uint16_t b, uint16_t ww, uint16_t cw, uint16_t time){
+  Serial.print("flashColor(");
+  Serial.print(r);
+  Serial.print(", ");
+  Serial.print(g);
+  Serial.print(", ");
+  Serial.print(b);
+  Serial.print(", ");
+  Serial.print(ww);
+  Serial.print(", ");
+  Serial.print(cw);
+  Serial.print(", ");
+  Serial.print(time);
+  Serial.println(")");
   // set color to flash with
   this->flashR = r;
   this->flashG = g;

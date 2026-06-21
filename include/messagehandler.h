@@ -69,7 +69,7 @@ class Messagehandler{
     // mac address goes here
     // chInfix goes here
     // channel number goes here
-    const char * configMsgPart7 = "/set\"";
+    const char * configMsgPart7 = "/set\"}";
 
     // buffer for last received message (to get info from using separate APIs)
     uint8_t bufferChannelNumber = 0; // channel number this message is for
@@ -93,11 +93,11 @@ class Messagehandler{
     // get mac address to use as part of the device name (and set client name)
     void getMacAddress();
     
-    // create and send autodiscovery message for given number of channels (plus the sum channel "0") and subscribe to command topics
-    void sendAutoDiscoveryMessage(PubSubClient client, uint8_t numberOfChannels);
+    // create and send autodiscovery message for given number of channels and subscribe to command topics
+    void sendAutoDiscoveryMessage(PubSubClient &client, uint8_t numberOfChannels);
     
     // create and send state message for one channel (RGB + colortemp)
-    void sendStateMessage(PubSubClient client, uint8_t channelNumber, uint8_t r, uint8_t g, uint8_t b, uint8_t ct, effect_t fx);
+    void sendStateMessage(PubSubClient &client, uint8_t channelNumber, uint8_t r, uint8_t g, uint8_t b, uint8_t ct, effect_t fx);
     
     // parse command message and extract commands from it
     // must be called with locked interrupts

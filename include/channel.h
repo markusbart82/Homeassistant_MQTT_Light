@@ -7,9 +7,6 @@
 class Channel{
 
   private:
-    // time keeping
-    int lastNow = 0;
-    
     // detect if colors have changed (i.e. an update is necessary)
     bool updated = true;
 

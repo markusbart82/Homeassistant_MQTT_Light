@@ -1,7 +1,6 @@
 // parses incoming MQTT messages and extracts data, creates outgoing MQTT messages from internal data
 
 #include "messagehandler.h"
-#include <regex>
 
 // constructor
 Messagehandler::Messagehandler(){
@@ -24,10 +23,15 @@ void Messagehandler::getMacAddress(){
   strcat(mqttClientName, macAddressUid);
 }
 
-// create and send autodiscovery message for given number of channels (plus the sum channel "0") and subscribe to command topics
-void Messagehandler::sendAutoDiscoveryMessage(PubSubClient client, uint8_t numberOfChannels){
+// create and send autodiscovery message for given number of channels and subscribe to command topics
+void Messagehandler::sendAutoDiscoveryMessage(PubSubClient &client, uint8_t numberOfChannels){
   // loop over all channels, send an autodiscovery message for each one
-  for(uint8_t channelNumber = 0; channelNumber <= numberOfChannels; channelNumber++){
+  Serial.print("sendAutoDiscoveryMessage(");
+  Serial.print(numberOfChannels);
+  Serial.println(")");
+  for(uint8_t channelNumber = 0; channelNumber < numberOfChannels; channelNumber++){
+    Serial.print("Channel ");
+    Serial.println(channelNumber);
     // get channel number as a char array
     itoa(channelNumber, chNum, 10);
     // assemble config topic
@@ -36,12 +40,14 @@ void Messagehandler::sendAutoDiscoveryMessage(PubSubClient client, uint8_t numbe
     strcat(configTopic, chInfix);
     strcat(configTopic, chNum);
     strcat(configTopic, topicPostfixConfig);
+    Serial.println(configTopic);
     // assemble command topic
     strcpy(commandTopic, topicPrefix);
     strcat(commandTopic, macAddressUid);
     strcat(commandTopic, chInfix);
     strcat(commandTopic, chNum);
     strcat(commandTopic, topicPostfixCommand);
+    Serial.println(commandTopic);
     // assemble and send  config message
     uint16_t configMessageLength = 0;
     configMessageLength += strlen(configMsgPart1);
@@ -58,11 +64,11 @@ void Messagehandler::sendAutoDiscoveryMessage(PubSubClient client, uint8_t numbe
     client.write((const unsigned char*) configMsgPart1, strlen(configMsgPart1));
     client.write((const unsigned char*) macAddressUid, strlen(macAddressUid));
     client.write((const unsigned char*) chInfix, strlen(chInfix));
-    client.write(channelNumber);
+    client.write((const unsigned char*) chNum, strlen(chNum));
     client.write((const unsigned char*) configMsgPart2, strlen(configMsgPart2));
     client.write((const unsigned char*) macAddressUid, strlen(macAddressUid));
     client.write((const unsigned char*) chInfix, strlen(chInfix));
-    client.write(channelNumber);
+    client.write((const unsigned char*) chNum, strlen(chNum));
     client.write((const unsigned char*) configMsgPart3, strlen(configMsgPart3));
     client.write((const unsigned char*) macAddressUid, strlen(macAddressUid));
     client.write((const unsigned char*) configMsgPart4, strlen(configMsgPart4));
@@ -70,11 +76,11 @@ void Messagehandler::sendAutoDiscoveryMessage(PubSubClient client, uint8_t numbe
     client.write((const unsigned char*) configMsgPart5, strlen(configMsgPart5));
     client.write((const unsigned char*) macAddressUid, strlen(macAddressUid));
     client.write((const unsigned char*) chInfix, strlen(chInfix));
-    client.write(channelNumber);
+    client.write((const unsigned char*) chNum, strlen(chNum));
     client.write((const unsigned char*) configMsgPart6, strlen(configMsgPart6));
     client.write((const unsigned char*) macAddressUid, strlen(macAddressUid));
     client.write((const unsigned char*) chInfix, strlen(chInfix));
-    client.write(channelNumber);
+    client.write((const unsigned char*) chNum, strlen(chNum));
     client.write((const unsigned char*) configMsgPart7, strlen(configMsgPart7));
     client.endPublish();
     // subscribe to command topic
@@ -83,8 +89,10 @@ void Messagehandler::sendAutoDiscoveryMessage(PubSubClient client, uint8_t numbe
 }
 
 // create and send state message for one channel (RGB + colortemp)
-void Messagehandler::sendStateMessage(PubSubClient client, uint8_t channelNumber, uint8_t r, uint8_t g, uint8_t b, uint8_t ct, effect_t fx){
-  JsonDocument message;
+void Messagehandler::sendStateMessage(PubSubClient &client, uint8_t channelNumber, uint8_t r, uint8_t g, uint8_t b, uint8_t ct, effect_t fx){
+  Serial.println("sendStateMessage");
+  //JsonDocument message;
+  StaticJsonDocument<512> message;
   if(r==0 && g==0 && b==0){
     message["state"] = "OFF";
   }else{
@@ -128,8 +136,9 @@ void Messagehandler::sendStateMessage(PubSubClient client, uint8_t channelNumber
 // parse command message and extract commands from it
 // must be called with locked interrupts
 void Messagehandler::parseMessage(char* topic, byte* payload, unsigned int length){
+  Serial.println("parseMessage");
   JsonDocument message;
-  DeserializationError error = deserializeJson(message, payload);
+  DeserializationError error = deserializeJson(message, payload, length);
   if(error){
 #if(NODE_DEBUG == true)
     Serial.println(error.f_str());
@@ -147,11 +156,12 @@ void Messagehandler::parseMessage(char* topic, byte* payload, unsigned int lengt
     this->bufferState = false;
 
     // read channelNumber from topic
-    // TODO: verify this actually works
-    const std::regex channel_regex("_ch([0-9]+)/");
-    std::cmatch match;
-    std::regex_search(topic, match, channel_regex);
-    this->bufferChannelNumber = atoi(match[0].str().c_str());
+    this->bufferChannelNumber = 0;
+    const char *ch = strstr(topic, "_ch");
+    if(ch){
+      ch += 3; // skip "_ch"
+      this->bufferChannelNumber = (uint8_t) atoi(ch);
+    }
 
     // flash [seconds]: time the lamp is supposed to flash in the chosen color before returning to previous color
     JsonVariant flash = message["flash"];
@@ -185,43 +195,49 @@ void Messagehandler::parseMessage(char* topic, byte* payload, unsigned int lengt
     // brightness [0..255]
     JsonVariant brightness = message["brightness"];
     if(!brightness.isNull()){
+      int b = brightness.as<int>();
       // set brightness
-      this->bufferBrightness = brightness.as<int>();
+      this->bufferBrightness = (uint8_t)b;
       // also set individual color values so they have valid values
-      this->bufferR = brightness.as<int>();
-      this->bufferG = brightness.as<int>();
-      this->bufferB = brightness.as<int>();
+      this->bufferR = (uint8_t)b;
+      this->bufferG = (uint8_t)b;
+      this->bufferB = (uint8_t)b;
       this->bufferEffect = none;
     }
     
     // colors [0..255]
     JsonVariant red = message["color"]["r"];
     if(!red.isNull()){
-      this->bufferR = red;
+      this->bufferR = red.as<int>();
       this->bufferEffect = none;
     }
     JsonVariant green = message["color"]["g"];
     if(!green.isNull()){
-      this->bufferG = green;
+      this->bufferG = green.as<int>();
       this->bufferEffect = none;
     }
     JsonVariant blue = message["color"]["b"];
     if(!blue.isNull()){
-      this->bufferB = blue;
+      this->bufferB = blue.as<int>();
       this->bufferEffect = none;
     }
     
     // color temperature [mireds]
     JsonVariant colorTemp = message["color_temp"];
     if(!colorTemp.isNull()){
-      this->bufferCT = colorTemp;
+      this->bufferCT = colorTemp.as<int>();
       this->bufferEffect = none;
     }
 
     // state [ON|OFF]
     JsonVariant state = message["state"];
     if(!state.isNull()){
-      this->bufferState = (strcmp(state,"ON")==0);
+      const char *s = state.as<const char*>();
+      if(s != nullptr && strcmp(s, "ON") == 0){
+        this->bufferState = true;
+      }else{
+        this->bufferState = false;
+      }
       // effect is not changed here
     }
 
@@ -268,7 +284,6 @@ uint8_t Messagehandler::getGreen(){
 uint8_t Messagehandler::getBlue(){
   return this->bufferB;
 }
-
 
 // return client name for use externally
 char * Messagehandler::getClientName(){

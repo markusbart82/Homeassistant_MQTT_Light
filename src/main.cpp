@@ -26,6 +26,7 @@ PubSubClient pubSubClient(wifiClient);
 
 // this function is the entry point for received messages
 void receiveMessage(char* topic, byte* payload, unsigned int length) {
+  Serial.println("receiveMessage");
 
   /* HomeAssistant will send these messages to the lamp using the UI:
    * OFF
@@ -56,7 +57,8 @@ void receiveMessage(char* topic, byte* payload, unsigned int length) {
    * And after the call, it reports back "OFF"
    */
 
-  noInterrupts();
+  //TODO: move all of the following into the main loop, inside messageHandler.parseMessage, and have a buffer for the received values
+  
   // call messagehandler to parse the message
   messagehandler.parseMessage(topic, payload, length);
 
@@ -73,14 +75,17 @@ void receiveMessage(char* topic, byte* payload, unsigned int length) {
   Channel* channel = channelmanager.getChannel(channelNumber);
   // check on/off state
   if(messagehandler.getState()){
+    Serial.println("state is ON");
     // state is "ON"
 
     if(messagehandler.getEffect() != none){
+      Serial.println("has effect");
       
       // if an effect is selected, use that
       channel->setEffect(messagehandler.getEffect());
 
     }else{
+      Serial.println("has no effect");
       
       // if no effect is selected, disable effects and proceed
       channel->setEffect(none);
@@ -92,6 +97,7 @@ void receiveMessage(char* topic, byte* payload, unsigned int length) {
 
       // calculate colors to use for dim/flash
       if(messagehandler.getBrightness()>0){
+        Serial.println("using brightness mode");
         // brightness is part of the message, go for uncolored mode
         if(messagehandler.getBrightness()==1){
           // special message to update color temperature and change nothing in the actual light
@@ -102,31 +108,43 @@ void receiveMessage(char* topic, byte* payload, unsigned int length) {
           Colorhandler::rgb8ToRgbww12(brightness, brightness, brightness, channel->getColorTemp(), r, g, b, ww, cw);
         }
       }else if(messagehandler.getRed()>0 || messagehandler.getGreen()>0 || messagehandler.getBlue()>0){
+        Serial.println("using RGB mode");
         // RGB is set, use it with stored color temperature
         Colorhandler::rgb8ToRgbww12(messagehandler.getRed(), messagehandler.getGreen(), messagehandler.getBlue(), channel->getColorTemp(), r, g, b, ww, cw);
+      }else{
+        // just "ON" command
+        Colorhandler::rgb8ToRgbww12(255u, 255u, 255u, channel->getColorTemp(), r, g, b, ww, cw);
       }
 
       // dim or flash the lamp accordingly
       if(writeUpdate){ // skip the update for the invisible colortemp update
         if(messagehandler.getFlashTime()>0){
+          Serial.println("flashing");
           // flashing
           channel->flashColor(r, g, b, ww, cw, messagehandler.getFlashTime());
         }else{
+          Serial.println("dimming");
           // dimming
           channel->dimToColor(r, g, b, ww, cw, messagehandler.getTransitionTime());
         }
       }
     }
   }else{
+    Serial.println("state is OFF");
     // state is "OFF"
     // turn off the lamp
     channel->dimToColor(0, 0, 0, 0, 0, messagehandler.getTransitionTime());
   }
 
   // send state message back to HomeAssistant server
-  messagehandler.sendStateMessage(pubSubClient, channelNumber, r, g, b, channel->getColorTemp(), messagehandler.getEffect());
+  // convert to 8bit values before reporting them back to home assistant
+  uint8_t r8 = 0;
+  uint8_t g8 = 0;
+  uint8_t b8 = 0;
+  uint16_t ct16 = 0;
+  Colorhandler::rgbww12ToRgb8(r, g, b, ww, cw, r8, g8, b8, ct16);
+  messagehandler.sendStateMessage(pubSubClient, channelNumber, r8, g8, b8, ct16, messagehandler.getEffect());
   
-  interrupts();
 }
 
 void setup() {
@@ -144,19 +162,25 @@ void setup() {
   Serial.begin(115200);
   delay(100);
 
+  // init channel manager (thereby initializing physical controllers)
+  channelmanager.init();
+
   // init wifi
+  Serial.println("Connecting to WIFI");
   WiFi.begin(SSID, PSK);
   while (WiFi.status() != WL_CONNECTED) {
     delay(100);
   }
+  Serial.println("WIFI connection established");
 
   // read mac address from wifi for unique names
-  messagehandler.getMacAddress();
   messagehandler.init();
+  messagehandler.getMacAddress();
 
   // configure MQTT broker
   pubSubClient.setServer(MQTT_BROKER, 1883);
   pubSubClient.setCallback(receiveMessage);
+  pubSubClient.setBufferSize(500);
 
   // random number generator
   randomSeed(analogRead(A0));
@@ -172,21 +196,36 @@ void setup() {
 
 
 void loop() {
-  // make sure we only communicate with an active connection
+  // make sure we only communicate with active WIFI
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Reconnecting to WIFI");
+    WiFi.begin(SSID, PSK);
+    while (WiFi.status() != WL_CONNECTED) {
+      delay(100);
+    }
+    Serial.println("WIFI connection established");
+  }
+  // make sure we only communicate with an active MQTT connection
   if (!pubSubClient.connected()) {
+    Serial.println("Connecting to MQTT");
     while (!pubSubClient.connected()) {
       pubSubClient.connect(messagehandler.getClientName(), MQTT_USER,MQTT_PASS);
       delay(100);
     }
+    Serial.println("MQTT connection established");
+    Serial.println("Sending auto discovery message to Home Assistant");
     // send discovery message and subscribe to command topics
-    messagehandler.sendAutoDiscoveryMessage(pubSubClient, 3); // TODO: make this dynamic - for now, it's 3 static channels
+    messagehandler.sendAutoDiscoveryMessage(pubSubClient, 3u); // TODO: make this dynamic - for now, it's 3 static channels
     // request update for all channels, the next loop will send current states of all channels to the controller(s)
     channelmanager.requestUpdate();
+    Serial.println("Home Assistant configured");
   }
 
   // update channels, do all the dimming etc. and send commands to physical controllers
   channelmanager.loop();
 
+  // parse incoming messages for MQTT
+  pubSubClient.loop();
+
   // TODO: do other repeating stuff
 }
-

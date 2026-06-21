@@ -16,6 +16,9 @@
 class Channelmanager{
   
   private:
+    // time keeping
+    int lastNow = 0;
+    
     uint8_t numberOfChannels = 0; // actually used channels
     uint8_t numberOfControllers = 0; // actually used controllers
     Channel * channels[MAX_CHANNELS]; // pointers to potentially used channels, increase if necessary
@@ -25,6 +28,9 @@ class Channelmanager{
     // constructor, takes number of channels to create
     Channelmanager(uint8_t numberOfChannels);
     
+    // initialization of physical controllers, i.e. set mode registers correctly
+    void init();
+
     // loop function that does all the repeating/timing stuff
     void loop();
     
